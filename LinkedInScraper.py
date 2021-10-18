@@ -42,10 +42,10 @@ class Experience:
     def __str__(self):
         date = ""
         if self.start_date and self.end_date is not None:
-            date = self.start_date + " " + self.end_date
+            date = self.start_date + " - " + self.end_date
         else:
             date = "ERROR"
-        return f"     Position: {self.position} \n     Company Name: {self.employment_type} \n     Employment Type: {self.employment_type} \n     Location: {self.location}\n     Dates: {date}\n     \n"
+        return f"     Position: {self.position} \n     Company Name: {self.company_name} \n     Employment Type: {self.employment_type} \n     Location: {self.location}\n     Dates: {date}\n     \n"
 
 class Education:
     def __init__(self):
@@ -213,7 +213,7 @@ class LinkedInScraper:
         submit = self.driver.find_element_by_xpath("/html/body/main/section[1]/div[2]/form/button").click()
 
         # Sometimes I am stopped for being a robot, this gives me time to prove I'm human
-        time.sleep(30)
+        time.sleep(10)
 
         # Login Validation
         # try:
@@ -345,110 +345,206 @@ class LinkedInScraper:
         for URL in self.employeeURLs:
             print("Link:", URL)
 
-    def ExtractEmployeeExperiences(self) -> List[Experience]:
+    def ExtractEmployeeExperiences(self, main) -> List[Experience]:
         experiences = []
 
-        experienceButton = None
+        expSection = None
+
+        print("Starting Exp Extraction...")
+        try:
+            expSection = WebDriverWait(main, 5).until(
+                EC.presence_of_element_located(
+                    (By.CSS_SELECTOR,
+                     "#experience-section")))
+        except TimeoutException:
+            print("Could not find experience section")
+
+        if expSection is None:
+            return None
+
+        # print()
+        # print("==================== EXP SECTION ====================")
+        # print(expSection.text)
+        # print()
+
+        print("Exp Expansion (Opt)...")
+        # If experience can be expanded, click the button
         try:
             # Expand experiences
-            experienceButton = WebDriverWait(self.driver, 10).until(
-                EC.element_to_be_clickable(
-                    (By.XPATH,
-                     "/html/body/div[6]/div[3]/div/div/div/div/div[3]/div/div/main/div/div/div[6]/span/div/section/div[1]/section/div/button")))
-        except TimeoutException:
+            expButtons = expSection.find_elements_by_tag_name("button")
+
+            for expButton in expButtons:
+                expButton.click()
+        except NoSuchElementException:
             print("Could not find button to expand experience")
 
-        if experienceButton:
-            experienceButton.click()
+        print("Extracting <li> tags...")
+        # Extracting Top-level <li> tags from Experience Section
+        expList = None
 
-        main = self.driver.find_element_by_tag_name("main")
-        ul = main.find_element_by_xpath("//div/div/div[6]/span/div/section/div[1]/section/ul")
-
-        # This line extracts all list objects under the ul (even nested objects)
-        # Nested objects have a different structure than non-nested, so we need to test whether
-        # the li element is nested or not and branch program flow accordingly
-        lst = ul.find_elements_by_tag_name("li")
-
-        # XPath Test (Because finding li the other way is not reliable)
-        company = ""
-        i = 0
-        elem = None
+        ul = None
         try:
-            elem = self.driver.find_elements_by_xpath(f"/html/body/div[6]/div[3]/div/div/div/div/div[3]/div/div/main/div/div/div[6]/span/div/section/div[1]/section/ul/li")
-        except NoSuchElementException:
-            pass
+            ul = WebDriverWait(expSection, 5).until(
+                EC.presence_of_element_located(
+                    (By.TAG_NAME,
+                     "ul")))
 
-        if elem is not None:
-            for el in elem:
-                print(el.find_element_by_xpath("//section/div/div/a/div[2]/p[2]").text.split()[0])
+            # print()
+            # print("==================== UL ====================")
+            # print(ul.text)
+            # print()
 
-        print("END TEST")
+            try:
+                # Assuming the workers can have no more than 100 jobs
+                expList = ul.find_elements_by_xpath("./li")
+            except NoSuchElementException:
+                print("Could not find list element")
 
-        numNestedExp = 0
-        for exp in lst:
-            tempExp = Experience()
-            # This indicates we are currently analyzing a nested experience
-            if numNestedExp > 0:
-                print("ID:", exp.id)
-                print(exp.text)
-                print("NESTED")
-                numNestedExp -= 1
-                tempExp.position = exp.find_element_by_xpath("//div/div/div/div/div/div[1]/h3/span[2]").text
-                tempExp.company_name = company
-                print("POSITION:", exp.find_element_by_xpath("//div/div/div/div/div/div[1]/h3/span[2]").text)
-                print("COMPANY:", tempExp.company_name)
-                tempExp.employment_type = exp.find_element_by_xpath("//div/div/div/div/div/div[1]/h4[1]").text
-                tempExp.description = exp.find_element_by_xpath("//div/div/div/div/div/div[2]/div").text
-                tempExp.location = exp.find_element_by_xpath("//div/div/div/div/div/div[1]/h4/span[2]").text
+        except TimeoutException:
+            print("Could not find experience list (1)")
+            return None
 
-                startenddate = exp.find_element_by_xpath("//div/div/div/div/div/div[1]/div/h4[1]/span[2]").text
+        print("Iterating through Experience List...")
+        for i, exp in enumerate(expList):
+            print()
+            # print()
+            # print("==================== NEW EXP ====================")
+            # print(expList[i].text)
+            # print()
 
-                # Date returned in form
-                dates = startenddate.split('–')
-                tempExp.start_date = dates[0].strip()
-                tempExp.end_date = dates[-1].strip()
-            else:
-                # Check if this list object contains experiences (we skip these, but note how much they contain)
-                # The number of nested loops under this one tells us how many times we need to use the
-                # nested experience branch
-                expUL = None
-                expSublist = None
+            # Check for type
+            expSublist = None
+            try:
+                ul = WebDriverWait(expList[i], 5).until(
+                    EC.presence_of_element_located(
+                        (By.TAG_NAME,
+                         "ul")))
+
                 try:
-                    expUL = exp.find_element_by_tag_name('ul')
-                    if(expUL):
-                        expSublist = expUL.find_elements_by_tag_name('li')
+                    expSublist = ul.find_elements_by_tag_name("li")
                 except NoSuchElementException:
-                    pass
+                    print("ERROR: Could not extract elements from experience sublist")
+                    return None
+            except TimeoutException:
+                print("Could not find experience sublist")
 
-                if expSublist:
-                    numNestedExp = len(expSublist)
-                    company = exp.find_element_by_xpath("//section/div/a/div/div[2]/h3/span[2]").text
-                    # There is nothing else to analyze with these elements
-                    continue
-                else:
-                    print("ID:", exp.id)
-                    print(exp.text)
-                    # This element is (1) not a nested experience and (2) not a li that contains nested
-                    # experiences (just a typical experience)
+            # List of Elements
+            if expSublist:
+                company = ""
+                try:
+                    company = exp.find_element_by_xpath("./section/div/a/div/div[2]/h3/span[2]").text
+                except:
+                    print("ERROR: Could not find company")
+                    return None
 
-                    tempExp.position = exp.find_element_by_xpath("//section/div/div/a/div[2]/h3").text
-                    print("POSITION:", tempExp.position)
-                    tempExp.company_name = exp.find_element_by_xpath("//section/div/div/a/div[2]/p[2]").text.split()[0]
-                    print("COMPANY:", tempExp.company_name)
-                    tempExp.employment_type = exp.find_element_by_xpath("//section/div/div/a/div[2]/p[2]/span").text
-                    tempExp.description = exp.find_element_by_xpath("//section/div/div/div/div").text
-                    tempExp.location = exp.find_element_by_xpath("//section/div/div/a/div[2]/h4/span[2]").text
+                for subExp in expSublist:
+                    experience = Experience()
 
-                    startenddate = exp.find_element_by_xpath("//section/div/div/a/div[2]/div/h4[1]/span[2]").text
+                    experience.company_name = company
+                    # Position
+                    try:
+                        experience.position = subExp.find_element_by_xpath("./div/div/div/div/div/div/h3/span[2]").text
+                    except NoSuchElementException:
+                        print("ERROR: Could not find position")
+                        return None
 
-                    # Date returned in form
-                    dates = startenddate.split('–')
-                    tempExp.start_date = dates[0].strip()
-                    tempExp.end_date = dates[-1].strip()
+                    # Type
+                    try:
+                        experience.employment_type = subExp.find_element_by_xpath("./div/div/div/div/div/div/h4[1]").text
+                    except NoSuchElementException:
+                        print("ERROR: Could not find company")
+                        return None
 
-            experiences.append(tempExp)
-            print("============================================")
+                    # Location (Optional)
+                    try:
+                        experience.location = subExp.find_element_by_xpath("./div/div/div/div/div/div/h4[2]/span[2]").text
+                    except NoSuchElementException:
+                        print("Could not find location")
 
+                    # Dates
+                    try:
+                        dates = subExp.find_element_by_xpath("./div/div/div/div/div/div/div/h4[1]/span[2]").text.split('–')
+                        experience.start_date = dates[0].strip()
+                        experience.end_date = dates[-1].strip()
+                    except NoSuchElementException:
+                        print("Could not find location")
+
+                    experience.description = None
+                    experience.media = None
+
+                    experiences.append(experience)
+
+            # Single Element
+            else:
+                experience = Experience()
+
+                # div[2] starting point
+                div = None
+                try:
+                    div = WebDriverWait(expList[i], 5).until(
+                        EC.presence_of_element_located(
+                            (By.XPATH,
+                             "./section/div/div/a/div[2]")))
+
+                except TimeoutException:
+                    print("Could not find experience sublist")
+
+                # Position
+                try:
+                    experience.position = div.find_element_by_tag_name("h3").text
+                except NoSuchElementException:
+                    print("ERROR: Could not find position")
+                    return None
+
+                # Company and Type
+                try:
+                    p = div.find_element_by_xpath("./p[2]")
+
+                    span = None
+                    try:
+                        span = p.find_element_by_tag_name("span")
+                    except NoSuchElementException:
+                        print("Cannot find job type")
+
+                    companyAndType = p.text
+                    if span:
+                        spaceInd = companyAndType.rindex(' ')
+                        experience.company_name = companyAndType[:spaceInd]
+                        experience.employment_type = companyAndType[spaceInd + 1:]
+                    else:
+                        experience.company_name = companyAndType
+
+                except NoSuchElementException:
+                    print("ERROR: Could not find company")
+                    return None
+
+                # Location (Optional)
+                try:
+                    experience.location = div.find_element_by_xpath("./h4/span[2]").text
+                except NoSuchElementException:
+                    print("Could not find location")
+
+                # Dates
+                try:
+                    dates = div.find_element_by_xpath("./div/h4[1]/span[2]").text.split('–')
+                    experience.start_date = dates[0].strip()
+                    experience.end_date = dates[-1].strip()
+                except NoSuchElementException:
+                    print("Could not find location")
+
+                # Description (Optional)
+                try:
+                    experience.description = expList[i].find_element_by_xpath("./section/div/div/div/div").text
+                except NoSuchElementException:
+                    print("Could not find location")
+
+                experience.media = None
+
+                experiences.append(experience)
+
+        print()
+        for e in experiences:
+            print(str(e))
         return experiences
 
     def ExtractEmployeeEducation(self):
@@ -520,55 +616,71 @@ class LinkedInScraper:
         return None
 
     def ExtractProfileAttributes(self, employeeURL: str) -> Employee:
+        # Navigate to web page
+        self.driver.get(employeeURL)
+
+        # Contains all relevant profile attributes
+        main = None
+
+        try:
+            main = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located(
+                    (By.TAG_NAME,
+                     "main")))
+        except TimeoutException:
+            print("Could not find <main>")
+
+        # If main cannot be found, no profile elements can be extracted
+        if main is None:
+            return None
+
         # Initialize Employee Object
         currentEmployee = Employee()
 
         # Last split in employeeURL
         currentEmployee.user_url_id = employeeURL.split("/")[-1]
-        print(currentEmployee.user_url_id)
 
-        # Navigate to web page
-        self.driver.get(employeeURL)
-
-        nameElement = None
         try:
-            nameElement = WebDriverWait(self.driver, 10).until(
+            nameElement = WebDriverWait(main, 10).until(
                 EC.presence_of_element_located(
-                    (By.XPATH, "/html/body/div[6]/div[3]/div/div/div/div/div[3]/div/div/main/div/section/div[2]/div[2]/div[1]/div[1]/h1")))
+                    (By.XPATH, "//div/section/div[2]/div[2]/div[1]/div[1]/h1")))
 
             if nameElement:
                 currentEmployee.name = nameElement.text
-                found = True
-            else:
-                self.driver.get(employeeURL)
         except TimeoutException:
             print("Could not find name")
 
-        if nameElement:
-            print(nameElement.text)
 
-        main = self.driver.find_element_by_tag_name("main")
+        try:
+            currentEmployee.location = main.find_element_by_xpath("//div/section/div[2]/div[2]/div[2]/span[1]").text
+        except NoSuchElementException:
+            print("Couldn't extract employee location")
 
-        currentEmployee.location = main.find_element_by_xpath("//div/section/div[2]/div[2]/div[2]/span[1]").text
-        currentEmployee.header = WebDriverWait(main, 10).until(
-            EC.presence_of_element_located(
-                (By.XPATH,
-                 "//div/section/div[2]/div[2]/div[1]/div[2]"))).text
+        # Header
+        try:
+            currentEmployee.header = WebDriverWait(main, 5).until(
+                EC.presence_of_element_located(
+                    (By.XPATH,
+                     "//div/section/div[2]/div[2]/div[1]/div[2]"))).text
+        except TimeoutException:
+            print("Cannot find header")
 
-        currentEmployee.about = WebDriverWait(main, 10).until(
-            EC.presence_of_element_located(
-                (By.XPATH,
-                 "//div/div/div[5]/section/div"))).text
+        try:
+            currentEmployee.about = WebDriverWait(main, 5).until(
+                EC.presence_of_element_located(
+                    (By.XPATH,
+                     "//div/div/div[5]/section/div"))).text
 
-        if currentEmployee.about[-8: 0] == "see more":
-            currentEmployee.about = currentEmployee.about[:-10]
+            if currentEmployee.about[-8: 0] == "see more":
+                currentEmployee.about = currentEmployee.about[:-10]
+        except TimeoutException:
+            print("Cannot find about")
 
         currentEmployee.website = None
 
-        currentEmployee.experience = self.ExtractEmployeeExperiences() # List
-        currentEmployee.education = self.ExtractEmployeeEducation() # List
+        currentEmployee.experience = self.ExtractEmployeeExperiences(main) # List
+        #currentEmployee.education = self.ExtractEmployeeEducation() # List
         print("----------------------------------------------------")
-        print(str(currentEmployee.education[0]))
         currentEmployee.skills = self.ExtractEmployeeSkills() # List
         currentEmployee.accomplishments = self.ExtractEmployeeAccomplishments() # List
 
@@ -578,5 +690,5 @@ class LinkedInScraper:
 if (USERNAME and PASSWORD != ""):
     driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH)
     #driver.LinkedInPeopleSearch("Microsoft")
-    URL = "https://www.linkedin.com/in/angeloibarrola/"
+    URL = "https://www.linkedin.com/in/josh-braida-358a5476/"
     emp = driver.ExtractProfileAttributes(URL)
