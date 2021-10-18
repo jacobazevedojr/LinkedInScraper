@@ -45,7 +45,7 @@ class Experience:
             date = self.start_date + " - " + self.end_date
         else:
             date = "ERROR"
-        return f"     Position: {self.position} \n     Company Name: {self.company_name} \n     Employment Type: {self.employment_type} \n     Location: {self.location}\n     Dates: {date}\n     \n"
+        return f"     Position: {self.position} \n     Company Name: {self.company_name} \n     Employment Type: {self.employment_type} \n     Location: {self.location}\n     Dates: {date}\n"
 
 class Education:
     def __init__(self):
@@ -64,14 +64,13 @@ class Education:
         if self.start_date and self.end_date is not None:
             date = self.start_date + " - " + self.end_date
 
-        return f"     Degree: {self.degree}\n     Degree Type: {self.degree_type}\n     Institution: {self.institution}\n     GPA: {self.GPA}\n     Activities: {self.activities}\n     Dates: {dates}"
+        return f"     Degree: {self.degree}\n     Degree Type: {self.degree_type}\n     Institution: {self.institution}\n     GPA: {self.GPA}\n     Activities: {self.activities}\n     Dates: {date}"
 
 class Skill:
     def __init__(self):
         self.skill = None
         self.category = None
-        self.endorsement_profile_urls = None # List
-
+        self.endorsement_profile_urls = None  # List
 
 class Publication:
     def __init__(self):
@@ -79,7 +78,7 @@ class Publication:
         self.publisher = None
         self.publication_date = None
         self.description = None
-        self.author_names = None # List
+        self.author_names = None  # List
 
 class Patent:
     def __init__(self):
@@ -90,7 +89,7 @@ class Patent:
         self.issue_date = None
         self.patent_url = None
         self.description = None
-        self.inventor_names = None # List
+        self.inventor_names = None  # List
 
 class Course:
     def __init__(self):
@@ -106,7 +105,7 @@ class Project:
         self.associated = None
         self.project_url = None
         self.description = None
-        self.creator_names = None # List
+        self.creator_names = None  # List
 
 class Honor_And_Award:
     def __init__(self):
@@ -170,19 +169,17 @@ class Employee:
 
         edu = ""
         for x in self.education:
-            edu + (str(x) + '\n')
+            edu += (str(x) + '\n')
 
-        skil = ""
-        for x in self.skills:
-            skil + (str(x) + '\n')
+        skill = ""
+        for x in []:
+            skill += (str(x) + '\n')
 
         acom = ""
-        for x in self.accomplishments:
-            acom + (str(x) + '\n')
+        for x in []:
+            acom += (str(x) + '\n')
 
-        print("Length of Exp Vector:", len(self.experience))
-
-        return f"Name: {self.name} \nHeader: {self.header} \nLocation: {self.location} \nAbout: {self.about} \n\nExperience: \n{exp} \n\nEducation: \n{edu}\n\nSkills: \n{skil}\n\nAccomplishments: {acom}"
+        return f"Name: {self.name}\nHeader: {self.header}\nLocation: {self.location}\nAbout: {self.about}\nExperience: {exp}\nEducation: {edu}\nSkills: {skill}\nAccomplishments: {acom}"
 
 """
 LinkedInScraper
@@ -201,8 +198,8 @@ class LinkedInScraper:
         # Specifying options to help driver be more efficient
         chrome_options = webdriver.ChromeOptions()
 
-        # chrome_options.headless = True
-        # chrome_options.add_argument("--window-size=1920,1080")
+        chrome_options.headless = True
+        chrome_options.add_argument("--window-size=1920,1080")
 
         self.driver = webdriver.Chrome(options=chrome_options, executable_path=driver_path)
 
@@ -213,16 +210,14 @@ class LinkedInScraper:
         submit = self.driver.find_element_by_xpath("/html/body/main/section[1]/div[2]/form/button").click()
 
         # Sometimes I am stopped for being a robot, this gives me time to prove I'm human
-        time.sleep(10)
-
-        # Login Validation
-        # try:
-        #     time.sleep(1)
-        #     account_button = self.driver.find_element_by_id("ember32")
-        #     print("Successful Login")
-        # except NoSuchElementException:
-        #     print("Login Unsuccessful")
-        #     self.driver = None
+        # Otherwise, proceeds with program execution if element is found
+        try:
+            WebDriverWait(self.driver, 30).until(
+                EC.presence_of_element_located(
+                    (By.CSS_SELECTOR,
+                     "#voyager-feed")))
+        except TimeoutException:
+            print("ERROR: Captcha needed")
 
     """
     LinkedInScraper::AddEmployeeURLsFromSearchPage
@@ -547,72 +542,144 @@ class LinkedInScraper:
             print(str(e))
         return experiences
 
-    def ExtractEmployeeEducation(self):
+    def ExtractEmployeeEducation(self, main):
         education = []
 
-        edList = None
+        eduSection = None
+
+        print("Starting Edu Extraction...")
         try:
-            edList = self.driver.find_elements_by_xpath(
-                "/html/body/div[6]/div[3]/div/div/div/div/div[3]/div/div/main/div/div/div[6]/span/div/section/div[2]/section/ul/li")
+            eduSection = WebDriverWait(main, 5).until(
+                EC.presence_of_element_located(
+                    (By.CSS_SELECTOR,
+                     "#education-section")))
+        except TimeoutException:
+            print("Could not find education section")
+
+        print("Edu Expansion (Opt)...")
+        # If education can be expanded, click the button
+        try:
+            # Expand experiences
+            eduButtons = eduSection.find_elements_by_tag_name("button")
+
+            for expButton in eduButtons:
+                expButton.click()
         except NoSuchElementException:
-            pass
+            print("Could not find button to expand experience")
 
-        if edList is not None:
-            for i, eduElem in enumerate(edList):
-                print("i + 1 =", i + 1)
-                edu = Education()
+        print("Extracting <li> tags...")
+        # Extracting Top-level <li> tags from Education Section
+        eduList = None
 
-                if len(edList) == 1:
-                    edu.degree = self.driver.find_element_by_xpath(
-                        f"/html/body/div[6]/div[3]/div/div/div/div/div[3]/div/div/main/div/div/div[6]/span/div/section/div[2]/section/ul/li/div/div/a/div[2]/div/p[1]/span[2]").text
-                    edu.degree_type = self.driver.find_element_by_xpath(
-                        f"/html/body/div[6]/div[3]/div/div/div/div/div[3]/div/div/main/div/div/div[6]/span/div/section/div[2]/section/ul/li/div/div/a/div[2]/div/p[2]/span[2]").text
-                    edu.institution = self.driver.find_element_by_xpath(
-                        f"/html/body/div[6]/div[3]/div/div/div/div/div[3]/div/div/main/div/div/div[6]/span/div/section/div[2]/section/ul/li/div/div/a/div[2]/div/h3").text
+        ul = None
+        try:
+            ul = WebDriverWait(eduSection, 5).until(
+                EC.presence_of_element_located(
+                    (By.TAG_NAME,
+                     "ul")))
 
-                    try:
-                        edu.GPA = self.driver.find_element_by_xpath(
-                            f"/html/body/div[6]/div[3]/div/div/div/div/div[3]/div/div/main/div/div/div[6]/span/div/section/div[2]/section/ul/li/div/div/a/div[2]/div/p[3]/span[2]").text
-                    except NoSuchElementException:
-                        pass
+            # print()
+            # print("==================== UL ====================")
+            # print(ul.text)
+            # print()
 
-                    try:
-                        edu.activities = self.driver.find_element_by_css_selector(f"span.activities-societies").text
-                    except NoSuchElementException:
-                        pass
+            try:
+                # Assuming the workers can have no more than 100 jobs
+                eduList = ul.find_elements_by_xpath("./li")
+            except NoSuchElementException:
+                print("Could not find list elements")
 
-                    edu.description = None
-                    edu.media = None
+        except TimeoutException:
+            print("Could not find education list (1)")
+            return None
 
-                    dateElem = ""
-                    try:
-                        dateElem = self.driver.find_element_by_xpath(
-                            f"/html/body/div[6]/div[3]/div/div/div/div/div[3]/div/div/main/div/div/div[5]/span/div/section/div[2]/section/ul/li/div/div/a/div[2]/p[1]/span[2]").text
-                    except NoSuchElementException:
-                        pass
-                else:
-                    edu.degree = self.driver.find_element_by_xpath(f"/html/body/div[6]/div[3]/div/div/div/div/div[3]/div/div/main/div/div/div[5]/span/div/section/div[2]/section/ul/li[{i + 1}]/div/div/a/div[2]/div/p[2]/span[2]").text
-                    edu.degree_type = self.driver.find_element_by_xpath(f"/html/body/div[6]/div[3]/div/div/div/div/div[3]/div/div/main/div/div/div[5]/span/div/section/div[2]/section/ul/li[{i + 1}]/div/div/a/div[2]/div/p[1]/span[2]").text
-                    edu.institution = self.driver.find_element_by_xpath(f"/html/body/div[6]/div[3]/div/div/div/div/div[3]/div/div/main/div/div/div[5]/span/div/section/div[2]/section/ul/li[{i + 1}]/div/div/a/div[2]/div/h3").text
-                    edu.GPA = self.driver.find_element_by_xpath(f"/html/body/div[6]/div[3]/div/div/div/div/div[3]/div/div/main/div/div/div[5]/span/div/section/div[2]/section/ul/li[{i + 1}]/div/div/a/div[2]/div/p[3]/span[2]").text
-                    edu.activities = self.driver.find_element_by_css_selector(f"span.activities-societies").text
-                    edu.description = None
-                    edu.media = None
+        for edu in eduList:
+            # Check for type
+            eduSublist = None
+            try:
+                ul = WebDriverWait(edu, 5).until(
+                    EC.presence_of_element_located(
+                        (By.TAG_NAME,
+                         "ul")))
 
-                    dateElem = self.driver.find_element_by_xpath(f"/html/body/div[6]/div[3]/div/div/div/div/div[3]/div/div/main/div/div/div[5]/span/div/section/div[2]/section/ul/li[{i + 1}]/div/div/a/div[2]/p[1]/span[2]").text
+                try:
+                    eduSublist = ul.find_elements_by_tag_name("li")
+                except NoSuchElementException:
+                    print("ERROR: Could not extract elements from education sublist")
+                    return None
+            except TimeoutException:
+                print("Could not find education sublist")
 
-                dates = dateElem.split('–')
-                edu.start_date = dates[0].strip()
-                edu.end_date = dates[-1].strip()
+            # Nested education
+            if eduSublist:
+                # Have not discovered how to implement yet
+                # Doesn't look like sublists exist in education
+                pass
+            # Single Element
+            else:
+                ed = Education()
 
-                education.append(edu)
+                # Degree
+                try:
+                    ed.degree = edu.find_element_by_xpath("./div/div/a/div[2]/div/p[2]/span[2]").text
+                except NoSuchElementException:
+                    print("ERROR: Cannot find degree")
+                    return None
+
+                # Degree Type
+                try:
+                    ed.degree_type = edu.find_element_by_xpath("./div/div/a/div[2]/div/p[1]/span[2]").text
+                except NoSuchElementException:
+                    print("ERROR: Cannot find degree type")
+                    return None
+
+                # Institution
+                try:
+                    ed.institution = edu.find_element_by_xpath("./div/div/a/div[2]/div/h3").text
+                except NoSuchElementException:
+                    print("ERROR: Cannot find institution")
+
+                # GPA
+                try:
+                    ed.GPA = edu.find_element_by_xpath("./div/div/a/div[2]/div/p[3]/span[2]").text
+                except NoSuchElementException:
+                    print("Cannot find GPA")
+
+                # Activities
+                try:
+                    ed.activities = edu.find_element_by_xpath("./div/div/a/div[2]/p[2]/span[2]").text
+                except NoSuchElementException:
+                    print("Cannot find activities")
+
+                # Description
+                try:
+                    ed.description = edu.find_element_by_xpath("./div/div/div/p").text
+                except NoSuchElementException:
+                    print("Cannot find education description")
+
+                # Media
+                try:
+                    ed.media = None
+                except NoSuchElementException:
+                    print("Cannot find media")
+
+                # Dates
+                try:
+                    dateElem = edu.find_element_by_xpath("./div/div/a/div[2]/p[1]/span[2]").text
+                    dates = dateElem.split('–')
+                    ed.start_date = dates[0].strip()
+                    ed.end_date = dates[-1].strip()
+                except NoSuchElementException:
+                    print("Cannot find dates of attendance")
+
+                education.append(ed)
 
         return education
 
-    def ExtractEmployeeSkills(self):
+    def ExtractEmployeeSkills(self, main):
         return None
 
-    def ExtractEmployeeAccomplishments(self):
+    def ExtractEmployeeAccomplishments(self, main):
         return None
 
     def ExtractProfileAttributes(self, employeeURL: str) -> Employee:
@@ -641,7 +708,7 @@ class LinkedInScraper:
         currentEmployee.user_url_id = employeeURL.split("/")[-1]
 
         try:
-            nameElement = WebDriverWait(main, 10).until(
+            nameElement = WebDriverWait(main, 5).until(
                 EC.presence_of_element_located(
                     (By.XPATH, "//div/section/div[2]/div[2]/div[1]/div[1]/h1")))
 
@@ -679,10 +746,9 @@ class LinkedInScraper:
         currentEmployee.website = None
 
         currentEmployee.experience = self.ExtractEmployeeExperiences(main) # List
-        #currentEmployee.education = self.ExtractEmployeeEducation() # List
-        print("----------------------------------------------------")
-        currentEmployee.skills = self.ExtractEmployeeSkills() # List
-        currentEmployee.accomplishments = self.ExtractEmployeeAccomplishments() # List
+        currentEmployee.education = self.ExtractEmployeeEducation(main) # List
+        currentEmployee.skills = self.ExtractEmployeeSkills(main) # List
+        currentEmployee.accomplishments = self.ExtractEmployeeAccomplishments(main) # List
 
         return currentEmployee
 
@@ -692,3 +758,4 @@ if (USERNAME and PASSWORD != ""):
     #driver.LinkedInPeopleSearch("Microsoft")
     URL = "https://www.linkedin.com/in/josh-braida-358a5476/"
     emp = driver.ExtractProfileAttributes(URL)
+    print(emp)
