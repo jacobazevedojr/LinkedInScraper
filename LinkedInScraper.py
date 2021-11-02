@@ -1,16 +1,18 @@
 from selenium.webdriver.support import expected_conditions as EC
-
 from selenium import webdriver
-import time
-from typing import List
-
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
-
-# Change to desired driver path
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 
-DRIVER_PATH = "C:\\Users\\jacob\\Desktop\\Senior Thesis\\chromedriver.exe"
+import time
+from typing import List, Set
+
+import mysql.connector
+from mysql.connector import Error
+
+# Change to desired driver path
+DRIVER_PATH = "C:\\Users\\jacob\\Desktop\\chromedriver.exe"
+
 
 # Either change driver code, or create a file called "creds.txt" in the working directory
 def GetUsernameAndPassword(textFilePath):
@@ -24,7 +26,6 @@ def GetUsernameAndPassword(textFilePath):
                 password = line
 
         return username, password
-    return None, None
 
 USERNAME, PASSWORD = GetUsernameAndPassword("creds.txt")
 
@@ -67,6 +68,9 @@ class Education:
             date = self.start_date + " - " + self.end_date
 
         return f"     Degree: {self.degree}\n     Degree Type: {self.degree_type}\n     Institution: {self.institution}\n     GPA: {self.GPA}\n     Activities: {self.activities}\n     Dates: {date}"
+
+    def __toDict__(self):
+        return {'degree': self.degree, 'degree_type': self.degree_type, 'institution': self.institution, 'GPA': self.GPA, 'activities': self.activities, 'description': self.description, 'start_date': self.start_date, 'end_date': self.end_date}
 
 
 class Skill:
@@ -204,6 +208,17 @@ class Employee:
 
         return f"Name: {self.name}\nHeader: {self.header}\nLocation: {self.location}\nAbout:\n     {self.about}\nExperience:\n{exp}Education:\n{edu}\nSkills:\n{skill}Accomplishments:\n{acom}"
 
+    def __toDict__(self):
+        empDict = {}
+        # Value is a dictionary of attribute values
+        empDict['employee'] = {'user_url': self.user_url_id, 'user_name': self.name, 'location': self.location, 'header': self.header, 'about': self.about}
+        # Value is a list of dictionaries of attribute values
+        empDict['education'] = [x.__toDict__ for x in self.education]
+        # Value is a dictionary of category-skill List pairs
+        empDict['skills'] = self.skills
+        # Value is a dictionary of category-accomplishment List pairs
+        empDict['accomplishments'] = self.accomplishments
+
 """
 LinkedInScraper
 
@@ -215,22 +230,37 @@ class LinkedInScraper:
     # Initializes driver
     def __init__(self, username, password, driver_path):
         # Stores the URL of each employee discovered in a LinkedIn query
-        self.employeeURLs = set()
-        # self.employeeURLs = LoadEmployeeURLs() should access DB and reload the dictionary of employeeURLs (so new searches don't duplicate)
+        self.employeeURLs = self.__LoadEmployeeURLs__()
 
         # Specifying options to help driver be more efficient
         chrome_options = webdriver.ChromeOptions()
 
-        chrome_options.headless = True
-        chrome_options.add_argument("--window-size=1920x1080")
+        #chrome_options.headless = True
+        #chrome_options.add_argument("--window-size=1920x1080")
 
         self.driver = webdriver.Chrome(options=chrome_options, executable_path=driver_path)
 
         self.driver.get("https://linkedin.com/home")
 
-        login = self.driver.find_element_by_css_selector("#session_key").send_keys(username)
-        password = self.driver.find_element_by_css_selector("#session_password").send_keys(password)
-        submit = self.driver.find_element_by_css_selector("#main-content > section.section.hero > div > div > form > button").click()
+        try:
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located(
+                    (By.CSS_SELECTOR,
+                     "#session_key"))).send_keys(username)
+
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located(
+                    (By.CSS_SELECTOR,
+                     "#session_password"))).send_keys(password)
+
+            WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH,
+                     "/html/body/main/section[1]/div/div/form/button"))).click()
+        except TimeoutException:
+            print("ERROR: Could not login properly")
+            self.driver = None
+            return
 
         # Sometimes I am stopped for being a robot, this gives me time to prove I'm human
         # Otherwise, proceeds with program execution if element is found
@@ -241,6 +271,16 @@ class LinkedInScraper:
                      "#voyager-feed")))
         except TimeoutException:
             print("ERROR: Captcha needed")
+
+    """
+    LinkedInScraper::__LoadEmployeeURLs__
+    
+    Description:
+        Accesses the database and returns the set of employee profiles previously parsed
+    """
+    def __LoadEmployeeURLs__(self) -> Set:
+        return set()
+
 
     """
     LinkedInScraper::AddEmployeeURLsFromSearchPage
@@ -375,7 +415,7 @@ class LinkedInScraper:
             print("ERROR: Could not find experience section")
 
         if expSection is None:
-            return None
+            return [-1]
 
         # print()
         # print("==================== EXP SECTION ====================")
@@ -415,7 +455,7 @@ class LinkedInScraper:
 
         except TimeoutException:
             print("ERROR: Could not find experience list (1)")
-            return None
+            return [-1]
 
         for i, exp in enumerate(expList):
             # print()
@@ -435,7 +475,7 @@ class LinkedInScraper:
                     expSublist = ul.find_elements_by_tag_name("li")
                 except NoSuchElementException:
                     print("ERROR: Could not extract elements from experience sublist")
-                    return None
+                    return [-1]
             except TimeoutException:
                 pass
 
@@ -446,7 +486,7 @@ class LinkedInScraper:
                     company = exp.find_element_by_xpath("./section/div/a/div/div[2]/h3/span[2]").text
                 except:
                     print("ERROR: Could not find company")
-                    return None
+                    return [-1]
 
                 for subExp in expSublist:
                     experience = Experience()
@@ -457,14 +497,14 @@ class LinkedInScraper:
                         experience.position = subExp.find_element_by_xpath("./div/div/div/div/div/div/h3/span[2]").text
                     except NoSuchElementException:
                         print("ERROR: Could not find position")
-                        return None
+                        return [-1]
 
                     # Type
                     try:
                         experience.employment_type = subExp.find_element_by_xpath("./div/div/div/div/div/div/h4[1]").text
                     except NoSuchElementException:
                         print("ERROR: Could not find company")
-                        return None
+                        return [-1]
 
                     # Location (Optional)
                     try:
@@ -505,7 +545,7 @@ class LinkedInScraper:
                     experience.position = div.find_element_by_tag_name("h3").text
                 except NoSuchElementException:
                     print("ERROR: Could not find position")
-                    return None
+                    return [-1]
 
                 # Company and Type
                 try:
@@ -527,7 +567,7 @@ class LinkedInScraper:
 
                 except NoSuchElementException:
                     print("ERROR: Could not find company")
-                    return None
+                    return [-1]
 
                 # Location (Optional)
                 try:
@@ -702,19 +742,21 @@ class LinkedInScraper:
                     EC.presence_of_element_located(
                         (By.TAG_NAME,
                          "ol")))
-
-                section = skill_ol.find_element_by_xpath("./parent::*")
-                div = section.find_element_by_xpath("./div[2]")
-                buttons = div.find_elements_by_tag_name("button")
-
-                for button in buttons:
-                    button.click()
-            except NoSuchElementException:
+            except TimeoutException:
                 pass
 
         if skill_ol is None:
-            print("ERROR: Could not find skills section")
             return None
+
+        try:
+            section = skill_ol.find_element_by_xpath("./parent::*")
+            div = section.find_element_by_xpath("./div[2]")
+            buttons = div.find_elements_by_tag_name("button")
+
+            for button in buttons:
+                button.click()
+        except NoSuchElementException:
+            pass
 
         # Extracting Main Skills
         # print(section.text)
@@ -752,7 +794,38 @@ class LinkedInScraper:
         return skills
 
     def ExtractEmployeeAccomplishments(self, main):
-        return None
+        accomplishments = {}
+
+        # Have to scroll down to hit accomplishments similarly to skills
+
+        accompIndicator = None
+        tries = 0
+        # These elements were not rendering because you have to scroll to them first
+        while accompIndicator is None and tries < 3:
+            self.driver.execute_script("window.scrollTo(0, 2000)")
+            tries += 1
+
+            try:
+                accompIndicator = WebDriverWait(self.driver, 2).until(
+                    EC.presence_of_element_located(
+                        (By.TAG_NAME,
+                         "NEED TO INITIALIZE THIS")))
+            except TimeoutException:
+                pass
+
+        if accompIndicator is None:
+            return None
+
+        categoryList = None
+        for category in categoryList:
+            if category not in accomplishments:
+                accomplishments[category] = []
+
+            accomplishmentList = None
+            for accomplishment in accomplishmentList:
+                accomplishments[category].append(accomplishment)
+
+        return accomplishments
 
     def ExtractProfileAttributes(self, employeeURL: str) -> Employee:
         # Navigate to web page
@@ -772,7 +845,7 @@ class LinkedInScraper:
 
         # If main cannot be found, no profile elements can be extracted
         if main is None:
-            return None
+            return -1
 
         # Initialize Employee Object
         currentEmployee = Employee()
@@ -819,9 +892,99 @@ class LinkedInScraper:
         currentEmployee.experience = self.ExtractEmployeeExperiences(main) # List
         currentEmployee.education = self.ExtractEmployeeEducation(main) # List
         currentEmployee.skills = self.ExtractEmployeeSkills(main)  # List
-        #currentEmployee.accomplishments = self.ExtractEmployeeAccomplishments(main) # List
+        currentEmployee.accomplishments = self.ExtractEmployeeAccomplishments(main) # List
 
         return currentEmployee
+
+# Could perform insertions over connection
+# Or could send the employee data in bulk and make insertions locally
+# Is this possible to bulk insert?
+class InsertToLinkedInDB:
+    def __init__(self, host, database, user, password):
+        self.conn = self.__connect__(host, database, user, password)
+
+    def __connect__(self, host, database, user, password):
+        """ Connect to MySQL database """
+        conn = None
+        try:
+            conn = mysql.connector.connect(host=host,
+                                           database=database,
+                                           user=user,
+                                           password=password)
+            if conn.is_connected():
+                print('Connected to MySQL database')
+
+        except Error as e:
+            print(e)
+
+        return conn
+
+    def InsertEmployees(self, employeeList: Employee):
+        # Need largest IDs for Employee, Experience, Education, Skill, and Accomplishment
+        # Despite the auto-incrementing PKs, we need to know the PKs to form the PK-FK relationships
+        emp_id = None
+        exp_id = None
+        edu_id = None
+        skill_id = None
+        accomp_id = None
+
+        for employee in employeeList:
+            # Store employee attr in Employee table
+            empInsert, expInsert, eduInsert, skillInsert, accompInsert  = self.__ExtractTableTuples__(employee)
+
+            self.__InsertEmployeeTuple__(empInsert)
+            self.__InsertExperienceTuples__(expInsert)
+            self.__InsertEducationTuples__(eduInsert)
+            self.__InsertSkillTuples__(skillInsert)
+            self.__InsertAccomplishmentTuples__(accompInsert)
+
+    def __ExtractTableTuples__(self, employee):
+        empInsert = self.__ExtractEmployeeTuple__(employee)
+        expinsert = self.__ExtractExperienceTuple__(employee)
+        eduInsert = self.__ExtractEducationTuple__(employee)
+        skillInsert = self.__ExtractSkillTuple__(employee)
+        accompInsert = self.__ExtractAccomplishmentTuple__(employee)
+
+        return empInsert, expinsert, eduInsert, skillInsert, accompInsert
+
+    def __ExtractEmployeeTuple__(self, employee):
+        pass
+
+    def __ExtractExperienceTuple__(self, employee):
+        pass
+
+    def __ExtractEducationTuple__(self, employee):
+        pass
+
+    def __ExtractSkillTuple__(self, employee):
+        pass
+
+    def __ExtractAccomplishmentTuple__(self, employee):
+        pass
+
+    """
+    InsertToLinkedInDB::__InsertEmployeeTuple__
+    
+    Description:
+        Inserts only the Employee components needed to initialize a tuple in the Employee table
+        
+    Parameters:
+        empInsert -- Employee components needed for Employee tuple
+    """
+    def __InsertEmployeeTuple__(self, empInsert):
+        pass
+
+    def __InsertExperienceTuples__(self, expInsert):
+        pass
+
+    def __InsertEducationTuples__(self, eduInsert):
+        pass
+
+    def __InsertSkillTuples__(self, skillInsert):
+        pass
+
+    def __InsertAccomplishmentTuples__(self, accompInsert):
+        pass
 
 # Driver Code
 if (USERNAME and PASSWORD != ""):
