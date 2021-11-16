@@ -11,8 +11,7 @@ import mysql.connector
 from mysql.connector import Error
 
 # Change to desired driver path
-DRIVER_PATH = "C:\\Users\\jacob\\Desktop\\chromedriver.exe"
-
+DRIVER_PATH = "C:\\Users\\jacob\\Desktop\\Senior Thesis\\chromedriver.exe"
 
 # Either change driver code, or create a file called "creds.txt" in the working directory
 def GetUsernameAndPassword(textFilePath):
@@ -28,6 +27,7 @@ def GetUsernameAndPassword(textFilePath):
         return username, password
 
 USERNAME, PASSWORD = GetUsernameAndPassword("creds.txt")
+DATABASE_USERNAME, DATABASE_PASSWORD = GetUsernameAndPassword("dbcreds.txt")
 
 
 class Experience:
@@ -228,7 +228,10 @@ Description:
 """
 class LinkedInScraper:
     # Initializes driver
-    def __init__(self, username, password, driver_path):
+    def __init__(self, username, password, driver_path, database):
+        # Database connection and methods for inserting employee information
+        self.database = database
+
         # Stores the URL of each employee discovered in a LinkedIn query
         self.employeeURLs = self.__LoadEmployeeURLs__()
 
@@ -280,7 +283,6 @@ class LinkedInScraper:
     """
     def __LoadEmployeeURLs__(self) -> Set:
         return set()
-
 
     """
     LinkedInScraper::AddEmployeeURLsFromSearchPage
@@ -900,24 +902,24 @@ class LinkedInScraper:
 # Or could send the employee data in bulk and make insertions locally
 # Is this possible to bulk insert?
 class InsertToLinkedInDB:
-    def __init__(self, host, database, user, password):
-        self.conn = self.__connect__(host, database, user, password)
+    def __init__(self, host, port, user, password):
+        self.host = host
+        self.port = port
+        self.user = user
+        self.password = password
 
-    def __connect__(self, host, database, user, password):
+    def __connect__(self):
         """ Connect to MySQL database """
         conn = None
         try:
-            conn = mysql.connector.connect(host=host,
-                                           database=database,
-                                           user=user,
-                                           password=password)
-            if conn.is_connected():
-                print('Connected to MySQL database')
+            conn = mysql.connector.connect(host=self.host,
+                                           port=self.port,
+                                           user=self.user,
+                                           password=self.password)
 
+            return conn
         except Error as e:
             print(e)
-
-        return conn
 
     def InsertEmployees(self, employeeList: Employee):
         # Need largest IDs for Employee, Experience, Education, Skill, and Accomplishment
@@ -930,7 +932,7 @@ class InsertToLinkedInDB:
 
         for employee in employeeList:
             # Store employee attr in Employee table
-            empInsert, expInsert, eduInsert, skillInsert, accompInsert  = self.__ExtractTableTuples__(employee)
+            empInsert, expInsert, empExpInsert, eduInsert, skillInsert, accompInsert  = self.__ExtractTableTuples__(employee)
 
             self.__InsertEmployeeTuple__(empInsert)
             self.__InsertExperienceTuples__(expInsert)
@@ -940,24 +942,28 @@ class InsertToLinkedInDB:
 
     def __ExtractTableTuples__(self, employee):
         empInsert = self.__ExtractEmployeeTuple__(employee)
-        expinsert = self.__ExtractExperienceTuple__(employee)
+        expInsert, empExpInsert = self.__ExtractExperienceTuple__(employee)
         eduInsert = self.__ExtractEducationTuple__(employee)
         skillInsert = self.__ExtractSkillTuple__(employee)
         accompInsert = self.__ExtractAccomplishmentTuple__(employee)
 
-        return empInsert, expinsert, eduInsert, skillInsert, accompInsert
+        return empInsert, expInsert, empExpInsert, eduInsert, skillInsert, accompInsert
 
     def __ExtractEmployeeTuple__(self, employee):
-        pass
+        return (employee.user_url_id, employee.name, employee.location, employee.header, employee.about)
 
     def __ExtractExperienceTuple__(self, employee):
-        pass
+        exp = employee.experience
+        return (exp.position, exp.company_name),\
+               (exp.start_date, exp.location, exp.description, exp.end_date, exp.employment_type)
 
     def __ExtractEducationTuple__(self, employee):
-        pass
+        edu = employee.education
+        return (edu.degree, edu.degree_type),\
+               (edu.start_date. edu.institution, edu.GPA, edu.activities, edu.description, edu.end_date)
 
     def __ExtractSkillTuple__(self, employee):
-        pass
+        skill = employee.skills
 
     def __ExtractAccomplishmentTuple__(self, employee):
         pass
@@ -972,7 +978,28 @@ class InsertToLinkedInDB:
         empInsert -- Employee components needed for Employee tuple
     """
     def __InsertEmployeeTuple__(self, empInsert):
-        pass
+        query = "INSERT INTO employee(user_url,name,location,header,about) " \
+                "VALUES(%s,%s,%s,%s,%s)"
+        args = empInsert
+
+        try:
+            conn = self.__connect__()
+
+            cursor = conn.cursor()
+            cursor.execute(query, args)
+
+            if cursor.lastrowid:
+                print('last insert id', cursor.lastrowid)
+            else:
+                print('last insert id not found')
+
+            conn.commit()
+        except Error as error:
+            print(error)
+
+        finally:
+            cursor.close()
+            conn.close()
 
     def __InsertExperienceTuples__(self, expInsert):
         pass
@@ -986,9 +1013,11 @@ class InsertToLinkedInDB:
     def __InsertAccomplishmentTuples__(self, accompInsert):
         pass
 
+
 # Driver Code
-if (USERNAME and PASSWORD != ""):
-    driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH)
+if USERNAME and PASSWORD != "":
+    database = InsertToLinkedInDB("10.33.113.250", 3308, DATABASE_USERNAME, DATABASE_PASSWORD)
+    driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH, database)
     #driver.LinkedInPeopleSearch("Microsoft")
     URL = "https://www.linkedin.com/in/josh-braida-358a5476/"
     emp = driver.ExtractProfileAttributes(URL)
