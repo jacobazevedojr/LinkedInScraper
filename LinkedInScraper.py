@@ -7,13 +7,14 @@ from selenium.webdriver.support.wait import WebDriverWait
 import time
 from typing import List, Set
 
-import mysql.connector
-from mysql.connector import Error
+from LinkedInDBAccess import InsertToLinkedInDB
 
 # Change to desired driver path
 DRIVER_PATH = "C:\\Users\\jacob\\Desktop\\Senior Thesis\\chromedriver.exe"
 
 # Either change driver code, or create a file called "creds.txt" in the working directory
+
+
 def GetUsernameAndPassword(textFilePath):
     with open(textFilePath, "r") as file:
         username = ""
@@ -25,6 +26,7 @@ def GetUsernameAndPassword(textFilePath):
                 password = line
 
         return username, password
+
 
 USERNAME, PASSWORD = GetUsernameAndPassword("creds.txt")
 DATABASE_USERNAME, DATABASE_PASSWORD = GetUsernameAndPassword("dbcreds.txt")
@@ -891,128 +893,13 @@ class LinkedInScraper:
             pass
 
         #currentEmployee.website = None
-        currentEmployee.experience = self.ExtractEmployeeExperiences(main) # List
-        currentEmployee.education = self.ExtractEmployeeEducation(main) # List
+        currentEmployee.experience = self.ExtractEmployeeExperiences(main)  # List
+        currentEmployee.education = self.ExtractEmployeeEducation(main)  # List
         currentEmployee.skills = self.ExtractEmployeeSkills(main)  # List
-        currentEmployee.accomplishments = self.ExtractEmployeeAccomplishments(main) # List
+        # Deprecated, accomplishments have been reworked
+        #currentEmployee.accomplishments = self.ExtractEmployeeAccomplishments(main)  # List
 
         return currentEmployee
-
-# Could perform insertions over connection
-# Or could send the employee data in bulk and make insertions locally
-# Is this possible to bulk insert?
-class InsertToLinkedInDB:
-    def __init__(self, host, port, user, password):
-        self.host = host
-        self.port = port
-        self.user = user
-        self.password = password
-
-    def __connect__(self):
-        """ Connect to MySQL database """
-        conn = None
-        try:
-            conn = mysql.connector.connect(host=self.host,
-                                           port=self.port,
-                                           user=self.user,
-                                           password=self.password)
-
-            return conn
-        except Error as e:
-            print(e)
-
-    def InsertEmployees(self, employeeList: Employee):
-        # Need largest IDs for Employee, Experience, Education, Skill, and Accomplishment
-        # Despite the auto-incrementing PKs, we need to know the PKs to form the PK-FK relationships
-        emp_id = None
-        exp_id = None
-        edu_id = None
-        skill_id = None
-        accomp_id = None
-
-        for employee in employeeList:
-            # Store employee attr in Employee table
-            empInsert, expInsert, empExpInsert, eduInsert, skillInsert, accompInsert  = self.__ExtractTableTuples__(employee)
-
-            self.__InsertEmployeeTuple__(empInsert)
-            self.__InsertExperienceTuples__(expInsert)
-            self.__InsertEducationTuples__(eduInsert)
-            self.__InsertSkillTuples__(skillInsert)
-            self.__InsertAccomplishmentTuples__(accompInsert)
-
-    def __ExtractTableTuples__(self, employee):
-        empInsert = self.__ExtractEmployeeTuple__(employee)
-        expInsert, empExpInsert = self.__ExtractExperienceTuple__(employee)
-        eduInsert = self.__ExtractEducationTuple__(employee)
-        skillInsert = self.__ExtractSkillTuple__(employee)
-        accompInsert = self.__ExtractAccomplishmentTuple__(employee)
-
-        return empInsert, expInsert, empExpInsert, eduInsert, skillInsert, accompInsert
-
-    def __ExtractEmployeeTuple__(self, employee):
-        return (employee.user_url_id, employee.name, employee.location, employee.header, employee.about)
-
-    def __ExtractExperienceTuple__(self, employee):
-        exp = employee.experience
-        return (exp.position, exp.company_name),\
-               (exp.start_date, exp.location, exp.description, exp.end_date, exp.employment_type)
-
-    def __ExtractEducationTuple__(self, employee):
-        edu = employee.education
-        return (edu.degree, edu.degree_type),\
-               (edu.start_date. edu.institution, edu.GPA, edu.activities, edu.description, edu.end_date)
-
-    def __ExtractSkillTuple__(self, employee):
-        skill = employee.skills
-
-    def __ExtractAccomplishmentTuple__(self, employee):
-        pass
-
-    """
-    InsertToLinkedInDB::__InsertEmployeeTuple__
-    
-    Description:
-        Inserts only the Employee components needed to initialize a tuple in the Employee table
-        
-    Parameters:
-        empInsert -- Employee components needed for Employee tuple
-    """
-    def __InsertEmployeeTuple__(self, empInsert):
-        query = "INSERT INTO employee(user_url,name,location,header,about) " \
-                "VALUES(%s,%s,%s,%s,%s)"
-        args = empInsert
-
-        try:
-            conn = self.__connect__()
-
-            cursor = conn.cursor()
-            cursor.execute(query, args)
-
-            if cursor.lastrowid:
-                print('last insert id', cursor.lastrowid)
-            else:
-                print('last insert id not found')
-
-            conn.commit()
-        except Error as error:
-            print(error)
-
-        finally:
-            cursor.close()
-            conn.close()
-
-    def __InsertExperienceTuples__(self, expInsert):
-        pass
-
-    def __InsertEducationTuples__(self, eduInsert):
-        pass
-
-    def __InsertSkillTuples__(self, skillInsert):
-        pass
-
-    def __InsertAccomplishmentTuples__(self, accompInsert):
-        pass
-
 
 # Driver Code
 if USERNAME and PASSWORD != "":
