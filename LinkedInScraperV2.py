@@ -13,6 +13,20 @@ from Employee import Employee
 # Change to desired driver path
 DRIVER_PATH = "C:\\Users\\jacob\\Desktop\\Senior Thesis\\chromedriver.exe"
 
+def ReadEmployeeURLsFromFile(textFilePath):
+    ans = []
+    with open(textFilePath, "r") as file:
+        for i, line in enumerate(file):
+            ans.append(line)
+
+    return ans
+
+def WriteEmployeeURLsToFile(textFilePath, empURLs):
+    with open(textFilePath, "w") as file:
+        for URL in empURLs:
+            file.write(URL + '\n')
+
+
 # Either change driver code, or create a file called "creds.txt" in the working directory
 
 
@@ -41,7 +55,6 @@ Description:
     Provides methods to extract relevant data from LinkedIn
 """
 
-
 class LinkedInScraper:
     # Dev Note: 11/16/2021 WORKING
     # Initializes driver
@@ -52,11 +65,14 @@ class LinkedInScraper:
         # Stores the URL of each employee discovered in a LinkedIn query
         self.employeeURLs = self.database.__LoadEmployeeURLs__()
 
+        if len(self.employeeURLs) == 0:
+            self.employeeURLs = ReadEmployeeURLsFromFile("employeeURLs.txt")
+
         # Specifying options to help driver be more efficient
         chrome_options = webdriver.ChromeOptions()
 
-        #chrome_options.headless = True
-        #chrome_options.add_argument("--window-size=1920x1080")
+        chrome_options.headless = True
+        chrome_options.add_argument("--window-size=1920x1080")
 
         self.driver = webdriver.Chrome(options=chrome_options, executable_path=driver_path)
 
@@ -98,17 +114,22 @@ class LinkedInScraper:
     Description:
         Adds all unique employee URLs to the employeeURLs set
     """
-    # MAY NEED TO REDO
     def AddEmployeeURLsFromSearchPage(self):
         main = None
         tries = 0
+
+        self.driver.execute_script("window.scrollTo(0, 2000)")
 
         while main is None and tries < 5:
             try:
                 tries += 1
                 main = self.driver.find_element_by_tag_name("main")
-            except:
+                print("Success")
+            except NoSuchElementException:
                 print(f"Couldn't find element, retrying... {5 - tries} more times")
+
+        if main is None:
+            return
 
         peopleDiv = main.find_element_by_xpath("./div/div/div[2]")
         peopleList = peopleDiv.find_elements_by_tag_name("li")
@@ -117,14 +138,12 @@ class LinkedInScraper:
             # Need to have better break criteria than this
             if i > 9:
                 break
-            print(peopleList[i].text)
             XPathLocation = f"./div/div/div[2]/div[1]/div[1]/div/span[1]/span/a[@href]"
             try:
                 link = element.find_element_by_xpath(XPathLocation).get_attribute("href")
                 print(link)
 
                 # Checks if profile is accessible (Not "LinkedIn Member")
-                print("Link Check:", link[25:27])
                 if link[25:27] == "in":
                     # Format link to only include profile ID
                     endLinkPosition = 0
@@ -132,7 +151,9 @@ class LinkedInScraper:
                         if char == '?':
                             endLinkPosition = i
 
-                    self.employeeURLs.add(link[:endLinkPosition])
+                    URL = link[:endLinkPosition]
+                    if URL not in self.employeeURLs:
+                        self.employeeURLs.append(URL)
                 # Otherwise, the link has no relevance
             except NoSuchElementException:
                 print(f"Inspect element at {XPathLocation}")
@@ -152,6 +173,7 @@ class LinkedInScraper:
     """
 
     def LinkedInPeopleSearch(self, query: str):
+        oldLen = len(self.employeeURLs)
         # Convert query string to a URLQuery
         queryArr = query.split(' ')
         URLQuery = ''
@@ -167,10 +189,19 @@ class LinkedInScraper:
         # Navigate to webpage
         self.driver.get(f"https://www.linkedin.com/search/results/people/?keywords={URLQuery}")
 
+        # JS Elements were not rendering without scrolling
+        self.driver.execute_script("window.scrollTo(0, 2000)")
+
         pageButtonCount = None
 
+        main = None
         try:
             main = self.driver.find_element_by_tag_name("main")
+        except NoSuchElementException:
+            print("Could not find main")
+            return
+
+        try:
             div1 = main.find_element_by_tag_name("div")
             div2 = div1.find_element_by_tag_name("div")
             div3 = div2.find_elements_by_tag_name("div")
@@ -183,38 +214,43 @@ class LinkedInScraper:
         except NoSuchElementException:
             print("Element not found, trying new location")
 
-        try:
-            pageButtonCount = self.driver.find_element_by_xpath(
-                "/html/body/div[6]/div[3]/div/div[2]/div/div[1]/main/div/div/div[5]/div/div/ul/li[last()]/button/span")
-        except NoSuchElementException:
-            print("Element not found, trying new location")
+        if pageButtonCount is None:
+            try:
+                pageButtonCount = main.find_element_by_xpath(
+                    "./div/div/div[5]/div/div/ul/li[last()]/button/span")
+            except NoSuchElementException:
+                print("Element not found, trying new location")
 
-        # For whatever reason, sometimes the element is located at this xpath
-        try:
-            pageButtonCount = self.driver.find_element_by_xpath(
-                "/html/body/div[5]/div[3]/div/div[2]/div/div[1]/main/div/div/div[4]/div/div/ul/li[last()]/button/span")
-        except NoSuchElementException:
-            print("Element not found, trying new location")
+        if pageButtonCount is None:
+            # For whatever reason, sometimes the element is located at this xpath
+            try:
+                pageButtonCount = main.find_element_by_xpath(
+                    "./div/div/div[4]/div/div/ul/li[last()]/button/span")
+            except NoSuchElementException:
+                print("Element not found, trying new location")
 
-        try:
-            pageButtonCount = self.driver.find_element_by_xpath(
-                "/html/body/div[5]/div[3]/div/div[2]/div/div[1]/main/div/div/div[5]/div/div/ul/li[10]/button/span")
-        except NoSuchElementException:
-            print("Element not found, defaulting to 0")
+        if pageButtonCount is None:
+            try:
+                pageButtonCount = self.driver.find_element_by_xpath(
+                    "/html/body/div[5]/div[3]/div/div[2]/div/div[1]/main/div/div/div[5]/div/div/ul/li[10]/button/span")
+            except NoSuchElementException:
+                print("Element not found, defaulting to 0")
 
-        # In this case (is None), there are either no pages or less than 10 pages which changes the format of the list
-        maxPageCount = 0
         if pageButtonCount is not None:
             maxPageCount = int(pageButtonCount.text)
+        else:
+            maxPageCount = 0
 
         for page in range(maxPageCount):
-            self.driver.get(f"https://www.linkedin.com/search/results/people/?keywords={URLQuery}&page={str(page)}")
+            print("Parsing Page", page)
+            if page != 1:
+                self.driver.get(f"https://www.linkedin.com/search/results/people/?keywords={URLQuery}&page={str(page)}")
             self.AddEmployeeURLsFromSearchPage()
 
-        print("Done")
-
-        for URL in self.employeeURLs:
-            print("Link:", URL)
+        print("Done with extracting URLs from Search...")
+        newLen = len(self.employeeURLs)
+        additions = newLen - oldLen
+        print("New Entries:", additions)
 
     def ExtractEmployeeExperiences(self, main):
         pass
@@ -299,11 +335,17 @@ class LinkedInScraper:
 
         return currentEmployee
 
+    def BatchLinkedInPeopleSearch(self, queries):
+        for query in queries:
+            self.LinkedInPeopleSearch(query)
+
 # Driver Code
 if USERNAME and PASSWORD != "":
     database = InsertToLinkedInDB("10.33.113.250", 3308, DATABASE_USERNAME, DATABASE_PASSWORD)
     driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH, database)
-    lst = driver.LinkedInPeopleSearch("Microsoft")
+
+    queries = ["Microsoft", "Microsoft Software Engineer", "Microsoft Software Developer"]
+    driver.BatchLinkedInPeopleSearch(queries)
+    WriteEmployeeURLsToFile("employeeURLs.txt", driver.employeeURLs)
     #URL = "https://www.linkedin.com/in/josh-braida-358a5476/"
     #emp = driver.ExtractProfileAttributes(URL)
-    print(lst)
