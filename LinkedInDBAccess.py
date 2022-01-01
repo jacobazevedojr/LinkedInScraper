@@ -11,17 +11,19 @@ from Education import Education
 from Experience import Experience
 
 class InsertToLinkedInDB:
-    def __init__(self, host, port, user, password):
+    def __init__(self, database, host, port, user, password):
         self.host = host
         self.port = port
         self.user = user
         self.password = password
+        self.database = database
 
     def __connect__(self):
         """ Connect to MySQL database """
         conn = None
         try:
-            conn = mysql.connector.connect(host=self.host,
+            conn = mysql.connector.connect(database=self.database,
+                                           host=self.host,
                                            port=self.port,
                                            user=self.user,
                                            password=self.password)
@@ -31,7 +33,7 @@ class InsertToLinkedInDB:
             print(e)
 
     def __LoadEmployeeURLs__(self):
-        query = 'SELECT user_url FROM EMPLOYEE'
+        query = 'SELECT e.user_url FROM EMPLOYEE as e'
         employeeURLs = []
 
         try:
@@ -40,7 +42,7 @@ class InsertToLinkedInDB:
             cursor = conn.cursor()
             cursor.execute(query)
 
-            for (user_url, ) in cursor:
+            for (user_url) in cursor:
                 employeeURLs.append(user_url)
 
         except Error as error:
@@ -96,11 +98,14 @@ class InsertToLinkedInDB:
         for edu in edus:
             # Appends a tuple of two tuples: First tuple for edu table, Second tuple for empedu table
             tuples.append(((edu.degree, edu.degree_type),
-                           (self.__CastToDate__(edu.start_date), edu.institution, edu.GPA, edu.activities, edu.description, self.__CastToDate__(edu.end_date))))
+                           (self.__CastToDate__(edu.start_date), self.__CastToDate__(edu.end_date), edu.institution, edu.GPA, edu.activities, edu.description)))
 
         return tuples
 
     def __ExtractSkillTuples__(self, employee):
+        if employee.skills is None:
+            return []
+
         tuples = []
         for category in employee.skills:
             for skill in employee.skills[category]:
@@ -109,6 +114,9 @@ class InsertToLinkedInDB:
         return tuples
 
     def __ExtractAccomplishmentTuples__(self, employee):
+        if employee.accomplishments is None:
+            return []
+
         tuples = []
         for category in employee.accomplishments:
             for accomp in employee.accomplishments[category]:
@@ -117,10 +125,16 @@ class InsertToLinkedInDB:
         return tuples
 
     def __CastToDate__(self, dateStr: str) -> date:
-        if dateStr.__contains__('Present'):
+        if dateStr.__contains__('Present') or len(dateStr) == 0:
             return None
 
-        d = datetime.strptime(dateStr, '%b %Y')
+        dateCheck = dateStr.split()
+        if len(dateCheck) == 1:
+            d = datetime.strptime(dateStr, '%Y')
+        elif len(dateCheck) == 2:
+            d = datetime.strptime(dateStr, '%b %Y')
+
+
         return d.date()
 
     """
@@ -134,6 +148,7 @@ class InsertToLinkedInDB:
     """
 
     def __InsertEmployeeTuple__(self, empInsert: (str)) -> int:
+        print("Inserting Employee Tuples")
         query = "INSERT INTO employee(user_url,name,location,header,about) " \
                 "VALUES(%s,%s,%s,%s,%s)"
         args = empInsert
@@ -144,13 +159,14 @@ class InsertToLinkedInDB:
             cursor = conn.cursor()
             cursor.execute(query, args)
 
+            print(cursor._executed, "params:", args)
+            conn.commit()
+
             if cursor.lastrowid:
                 return cursor.lastrowid
             else:
                 print('last insert id not found')
                 return None
-
-            conn.commit()
         except Error as error:
             print(error)
 
@@ -159,6 +175,7 @@ class InsertToLinkedInDB:
             conn.close()
 
     def __InsertExperienceTuples__(self, expInsert: [(), ()], emp_id: int):
+        print("Inserting Experience Tuples")
         expQuery = "INSERT INTO EXPERIENCE(position, company_name) " \
                    "VALUES(%s,%s)"
         try:
@@ -168,6 +185,7 @@ class InsertToLinkedInDB:
                 expArgs = exp[0]
 
                 cursor.execute(expQuery, expArgs)
+                print(cursor._executed, "params:", exp[0])
 
                 exp_id = cursor.lastrowid
 
@@ -176,6 +194,8 @@ class InsertToLinkedInDB:
                 empExpArgs = exp[1]
 
                 cursor.execute(empExpQuery, empExpArgs)
+                print(cursor._executed, "params:", exp[1])
+
             conn.commit()
         except Error as error:
             print(error)
@@ -185,6 +205,7 @@ class InsertToLinkedInDB:
             conn.close()
 
     def __InsertEducationTuples__(self, eduInsert: [(), ()], emp_id: int):
+        print("Inserting Education Tuples")
         eduQuery = "INSERT INTO EDUCATION(degree,degree_type) " \
                    "VALUES(%s,%s)"
         try:
@@ -195,11 +216,12 @@ class InsertToLinkedInDB:
                 eduArgs = edu[0]
 
                 cursor.execute(eduQuery, eduArgs)
+                print(cursor._executed, "params:", eduArgs)
 
                 edu_id = cursor.lastrowid
 
-                empEduQuery = "INSERT INTO EMPLOYEEEDUCATION(emp_id,edu_id,start_date,institution,GPA,activities,description,end_date) " \
-                              f"VALUES({emp_id},{edu_id},%s,%s,%s,%s,%s)"
+                empEduQuery = "INSERT INTO EMPLOYEEEDUCATION(emp_id,edu_id,start_date,end_date,institution,GPA,activities,description) " \
+                              f"VALUES({emp_id},{edu_id},%s,%s,%s,%s,%s,%s)"
                 empEduArgs = edu[1]
 
                 cursor.execute(empEduQuery, empEduArgs)
@@ -212,6 +234,9 @@ class InsertToLinkedInDB:
             conn.close()
 
     def __InsertSkillTuples__(self, skillInsert: [(str)], emp_id: int):
+        if len(skillInsert) == 0:
+            return
+        print("Inserting Skill Tuples")
         skillQuery = "INSERT INTO SKILL(skill, category) " \
                    "VALUES(%s,%s)"
         try:
@@ -222,6 +247,7 @@ class InsertToLinkedInDB:
                 skillArgs = skill
 
                 cursor.execute(skillQuery, skillArgs)
+                print(cursor._executed, "params:", skillArgs)
 
                 skill_id = cursor.lastrowid
 
@@ -238,6 +264,9 @@ class InsertToLinkedInDB:
             conn.close()
 
     def __InsertAccomplishmentTuples__(self, accompInsert: [(str)], emp_id: int):
+        if len(accompInsert) == 0:
+            return
+        print("Inserting Accomplishment Tuples")
         accompQuery = "INSERT INTO ACCOMPLISHMENT(accomp, category) " \
                    "VALUES(%s,%s)"
         try:
@@ -248,6 +277,7 @@ class InsertToLinkedInDB:
                 accompArgs = accomp
 
                 cursor.execute(accompQuery, accompArgs)
+                print(cursor._executed, "params:", accompArgs)
 
                 accomp_id = cursor.lastrowid
 

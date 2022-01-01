@@ -1,20 +1,19 @@
 from Education import Education
 from Experience import Experience
 
-
 class Employee:
     def __init__(self):
-        self.experience = None # List
-        self.education = None # List
-        self.skills = None # Dict
-        self.accomplishments = None # Dict
+        self.experience = [] # List
+        self.education = [] # List
+        self.skills = {} # Dict
+        self.accomplishments = {} # Dict
 
-        self.user_url_id = None
-        self.name = None
-        self.location = None
-        self.header = None
-        self.about = None
-        self.website = None
+        self.user_url_id = ""
+        self.name = ""
+        self.location = ""
+        self.header = ""
+        self.about = ""
+        self.website = ""
 
     def __str__(self):
 
