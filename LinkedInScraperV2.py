@@ -8,7 +8,10 @@ import time
 from typing import List, Set
 
 from LinkedInDBAccess import InsertToLinkedInDB
+
 from Employee import Employee
+from Experience import Experience
+from Education import Education
 
 # Change to desired driver path
 DRIVER_PATH = "C:\\Users\\jacob\\Desktop\\Senior Thesis\\chromedriver.exe"
@@ -45,7 +48,7 @@ def GetUsernameAndPassword(textFilePath):
 
 USERNAME, PASSWORD = GetUsernameAndPassword("creds.txt")
 DATABASE_USERNAME, DATABASE_PASSWORD = GetUsernameAndPassword("dbcreds.txt")
-
+DATABASE = InsertToLinkedInDB("linkedin", "10.33.113.250", 3308, DATABASE_USERNAME, DATABASE_PASSWORD)
 
 """
 LinkedInScraper
@@ -252,16 +255,237 @@ class LinkedInScraper:
         additions = newLen - oldLen
         print("New Entries:", additions)
 
-    def ExtractEmployeeExperiences(self, main):
+    def ExtractEmployeeExperiences(self, employeeURL):
+        experiences = []
+        # profileurl/details/experience
+        self.driver.get(employeeURL+"/details/experience")
+        # All information contained within <main>
+        expSection = None
+        try:
+            expSection = self.driver.find_element_by_tag_name("main")
+
+        except NoSuchElementException:
+            return []
+        # From main: div[2]/div/div/ul
+
+        '''
+        # If experience can be expanded, click the button
+        try:
+            # Expand experiences
+            expButtons = expSection.find_elements_by_tag_name("button")
+
+            for expButton in expButtons:
+                expButton.click()
+        except NoSuchElementException:
+            pass
+        '''
+
+        # Extracting Top-level <li> tags from Experience Section
+        expList = None
+
+        ul = None
+        try:
+            ul = WebDriverWait(expSection, 2).until(
+                EC.presence_of_element_located(
+                    (By.XPATH,
+                     "./section/div[2]/div/div[1]/ul")))
+
+            # print()
+            # print("==================== UL ====================")
+            # print(ul.text)
+            # print()
+
+            try:
+                # Assuming the workers can have no more than 100 jobs
+                expList = ul.find_elements_by_xpath("./li")
+            except NoSuchElementException:
+                pass
+
+        except TimeoutException:
+            print("ERROR: Could not find experience list (1)")
+            return [-1]
+
+        for i, exp in enumerate(expList):
+            # print()
+            # print("==================== NEW EXP ====================")
+            # print(expList[i].text)
+            # print()
+
+            # Check for type
+            expSublist = None
+            try:
+                # This can trigger for elements with descriptions
+                # (Single elements store their descriptions at the same location)
+                ul = WebDriverWait(expList[i], 2).until(
+                    EC.presence_of_element_located(
+                        (By.TAG_NAME,
+                         "ul")))
+                ul2 = WebDriverWait(ul, 2).until(
+                    EC.presence_of_element_located(
+                        (By.TAG_NAME,
+                         "ul")))
+
+                try:
+                    # Test to see if subList
+                    pointForSubExp = exp.find_element_by_xpath("./div/div[2]/div[2]/ul/li/div/div/div[1]/ul/li[1]/span")
+                    expSublist = ul2.find_elements_by_xpath("./li")
+                except NoSuchElementException:
+                    pass
+            except TimeoutException:
+                pass
+
+            # List of Elements
+            if expSublist:
+                company = ""
+                try:
+                    company = exp.find_element_by_xpath("./div/div[2]/div[1]/a/div/span/span[1]").text
+                except NoSuchElementException:
+                    print("ERROR: Could not find company [1]")
+                    return [-1]
+
+                jobType = ""
+                # If this field is found, it applies to all subExp elements
+                try:
+                    # Comes in the format <Full-time · 7 mos>
+                    jobType = exp.find_element_by_xpath("./div/div[2]/div[1]/a/span[1]/span[1]").text.split()[0]
+                except NoSuchElementException:
+                    pass
+
+                location = ""
+                try:
+                    location = exp.find_element_by_xpath("./div/div[2]/div[1]/a/span[2]/span[1]").text
+                except NoSuchElementException:
+                    pass
+
+                for subExp in expSublist:
+                    experience = Experience()
+
+                    experience.company_name = company
+                    # Position
+                    try:
+                        experience.position = subExp.find_element_by_xpath(
+                            "./div/div[2]/div/a/div/span/span[1]").text
+
+                    except NoSuchElementException:
+                        print("ERROR: Could not find position [1]")
+                        return [-1]
+
+                    # Type (Optional)
+                    if jobType != "":
+                        experience.employment_type = jobType
+                    else:
+                        try:
+                            experience.employment_type = subExp.find_element_by_xpath(
+                                "./div/div/div[1]/ul/li[1]/div/div[2]/div/a/span[1]").text
+                        except NoSuchElementException:
+                            pass
+
+                    if location != "":
+                        experience.location = location
+                    else:
+                        # Location (Optional)
+                        try:
+                            experience.location = subExp.find_element_by_xpath(
+                                "./div/div[2]/div/a/span[3]/span[1]").text
+                        except NoSuchElementException:
+                            pass
+
+                    # Dates
+                    try:
+                        dates = subExp.find_element_by_xpath(
+                            "./div/div[2]/div/a/span/span[1]").text
+                        # Nov 2021 - Present · 2 mos
+                        dashInd = dates.rindex("-")
+                        experience.start_date = dates[:dashInd].strip()
+                        try:
+                            dotInd = dates.rindex('·')
+                            experience.end_date = dates[dashInd + 2:dotInd].strip()
+                        except ValueError:
+                            experience.end_date = dates[dashInd + 2:].strip()
+                    except NoSuchElementException:
+                        pass
+
+                    experience.description = None
+                    experience.media = None
+
+                    print(experience)
+                    experiences.append(experience)
+
+            # Single Element
+            else:
+                experience = Experience()
+
+                # Position
+                try:
+                    experience.position = exp.find_element_by_xpath("./div/div[2]/div/div[1]/div/span/span[1]").text
+                except NoSuchElementException:
+                    print("ERROR: Could not find position [2]")
+                    return [-1]
+
+                # Company and Type
+                try:
+                    companyAndType = exp.find_element_by_xpath("./div/div[2]/div/div[1]/span[1]/span[1]").text
+
+                    try:
+                        dotInd = companyAndType.rindex('·')
+                        experience.company_name = companyAndType[:dotInd].strip()
+                        experience.employment_type = companyAndType[dotInd + 1:].strip()
+                    except ValueError:
+                        experience.company_name = companyAndType
+
+                except NoSuchElementException:
+                    print("ERROR: Could not find company [3]")
+                    return [-1]
+
+                # Location (Optional)
+                try:
+                    experience.location = exp.find_element_by_xpath("./div/div[2]/div/div[1]/span[3]/span[1]").text
+                except NoSuchElementException:
+                    pass
+
+                # Dates
+                try:
+                    dates = exp.find_element_by_xpath("./div/div[2]/div/div[1]/span[2]/span[1]").text
+                    # Nov 2021 - Present · 2 mos
+                    dashInd = dates.rindex("-")
+                    experience.start_date = dates[:dashInd].strip()
+                    try:
+                        dotInd = dates.rindex('·')
+                        experience.end_date = dates[dashInd + 2:dotInd].strip()
+                    except ValueError:
+                        experience.end_date = dates[dashInd + 2:].strip()
+                except NoSuchElementException:
+                    pass
+
+                # Description (Optional)
+                try:
+                    experience.description = exp.find_element_by_xpath("./div/div[2]/div[2]/ul/li/div/ul/li/div/div/div/span[1]").text
+                except NoSuchElementException:
+                    pass
+
+                experience.media = None
+
+                print(experience)
+                print()
+                experiences.append(experience)
+
+        return experiences
+
+    def ExtractEmployeeEducation(self, employeeURL):
+        # profileurl/details/education
+        self.driver.get(employeeURL+"/details/education")
+        # All information contained within <main>
+        # From main:
         pass
 
-    def ExtractEmployeeEducation(self, main):
+    def ExtractEmployeeSkills(self, employeeURL):
+        #profileurl/details/skills
+        self.driver.get(employeeURL+"/details/skills")
+        # All information contained within <main>
         pass
 
-    def ExtractEmployeeSkills(self, main):
-        pass
-
-    def ExtractEmployeeAccomplishments(self, main):
+    def ExtractEmployeeAccomplishments(self, employeeURL):
+        # Deprecated, accomplishments have been split into their respective categories
         pass
 
     # Dev Note: 11/16/2021 WORKING
@@ -327,9 +551,9 @@ class LinkedInScraper:
             pass
 
         #currentEmployee.website = None
-        currentEmployee.experience = self.ExtractEmployeeExperiences(main)  # List
-        currentEmployee.education = self.ExtractEmployeeEducation(main)  # List
-        currentEmployee.skills = self.ExtractEmployeeSkills(main)  # List
+        currentEmployee.experience = self.ExtractEmployeeExperiences(employeeURL)  # List
+        #currentEmployee.education = self.ExtractEmployeeEducation(employeeURL)  # List
+        #currentEmployee.skills = self.ExtractEmployeeSkills(employeeURL)  # List
         # Deprecated, accomplishments have been reworked
         #currentEmployee.accomplishments = self.ExtractEmployeeAccomplishments(main)  # List
 
@@ -339,13 +563,53 @@ class LinkedInScraper:
         for query in queries:
             self.LinkedInPeopleSearch(query)
 
+testEmployee = Employee()
+
+testEmployee.user_url_id = "https://www.linkedin.com/in/jacobazevedojr/"
+testEmployee.name = "Jacob Azevedo Jr."
+testEmployee.location = "San Francisco Bay Area"
+testEmployee.header = "This is a test header for Jacob Azevedo"
+testEmployee.about = "This is a test about for Jacob Azevedo"
+testEmployee.website = None
+
+testEmployee.experience = []
+testEmployee.experience.append(Experience())
+testEmployee.experience[0].position = "Software Engineer"
+testEmployee.experience[0].company_name = "Microsoft"
+testEmployee.experience[0].employment_type = "Full-Time"
+testEmployee.experience[0].location = "Seattle, WA"
+testEmployee.experience[0].description = "This is a job description"
+testEmployee.experience[0].media = None
+testEmployee.experience[0].start_date = "May 2021"
+testEmployee.experience[0].end_date = "Aug 2021"
+
+testEmployee.education = []
+testEmployee.education.append(Education())
+testEmployee.education[0].degree = "Computer Science"
+testEmployee.education[0].degree_type = "Bachelor of Science"
+testEmployee.education[0].institution = "California State University, Long Beach"
+testEmployee.education[0].GPA = "3.92"
+testEmployee.education[0].activities = ""
+testEmployee.education[0].description = ""
+testEmployee.education[0].media = None
+testEmployee.education[0].start_date = "2020"
+testEmployee.education[0].end_date = "2022"
+
+testEmployee.skills = {"Main": ["C++", "Python (Programming Language)", "Java"]}
+testEmployee.accomplishments = None
+
 # Driver Code
 if USERNAME and PASSWORD != "":
-    database = InsertToLinkedInDB("10.33.113.250", 3308, DATABASE_USERNAME, DATABASE_PASSWORD)
-    driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH, database)
+    driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH, DATABASE)
 
-    queries = ["Microsoft", "Microsoft Software Engineer", "Microsoft Software Developer"]
-    driver.BatchLinkedInPeopleSearch(queries)
-    WriteEmployeeURLsToFile("employeeURLs.txt", driver.employeeURLs)
-    #URL = "https://www.linkedin.com/in/josh-braida-358a5476/"
-    #emp = driver.ExtractProfileAttributes(URL)
+    # Test insertion to DB
+    #DATABASE.InsertEmployees([testEmployee])
+
+    # Test extraction of batch search of queries
+    #queries = ["Microsoft", "Microsoft Software Engineer", "Microsoft Software Developer"]
+    #driver.BatchLinkedInPeopleSearch(queries)
+    #WriteEmployeeURLsToFile("employeeURLs.txt", driver.employeeURLs)
+
+    # Test extraction of single profile
+    URL = "https://www.linkedin.com/in/josh-braida-358a5476"
+    emp = driver.ExtractProfileAttributes(URL)

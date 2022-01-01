@@ -1,3 +1,4 @@
+'''
 from selenium.webdriver.support import expected_conditions as EC
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
@@ -903,9 +904,10 @@ class LinkedInScraper:
 
 # Driver Code
 if USERNAME and PASSWORD != "":
-    database = InsertToLinkedInDB("10.33.113.250", 3308, DATABASE_USERNAME, DATABASE_PASSWORD)
-    driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH, database)
+    #database = InsertToLinkedInDB("10.33.113.250", 3308, DATABASE_USERNAME, DATABASE_PASSWORD)
+    #driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH, database)
     #driver.LinkedInPeopleSearch("Microsoft")
-    URL = "https://www.linkedin.com/in/josh-braida-358a5476/"
-    emp = driver.ExtractProfileAttributes(URL)
-    print(emp)
+    #URL = "https://www.linkedin.com/in/josh-braida-358a5476/"
+    #emp = driver.ExtractProfileAttributes(URL)
+    #print(emp)
+'''

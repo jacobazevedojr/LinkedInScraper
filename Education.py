@@ -1,14 +1,14 @@
 class Education:
     def __init__(self):
-        self.degree = None
-        self.degree_type = None
-        self.institution = None
-        self.GPA = None
-        self.activities = None
-        self.description = None
-        self.media = None
-        self.start_date = None
-        self.end_date = None
+        self.degree = ""
+        self.degree_type = ""
+        self.institution = ""
+        self.GPA = ""
+        self.activities = ""
+        self.description = ""
+        self.media = ""
+        self.start_date = ""
+        self.end_date = ""
 
     def __str__(self):
         date = "ERROR"
