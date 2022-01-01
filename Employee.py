@@ -34,7 +34,7 @@ class Employee:
             for key in self.skills:
                 skill += ("     " + key + '\n')
                 for skl in self.skills[key]:
-                    skill += (str(skl) + '\n')
+                    skill += ("          " + str(skl) + '\n')
 
         if self.accomplishments:
             for key in self.accomplishments:
