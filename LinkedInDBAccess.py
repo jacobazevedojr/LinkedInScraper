@@ -10,7 +10,7 @@ from Employee import Employee
 from Education import Education
 from Experience import Experience
 
-class InsertToLinkedInDB:
+class LinkedInDB:
     def __init__(self, database, host, port, user, password):
         self.host = host
         self.port = port
