@@ -22,10 +22,12 @@ def ReadEmployeeURLsFromFile(textFilePath):
 
     return ans
 
+
 def WriteEmployeeURLsToFile(textFilePath, empURLs):
     with open(textFilePath, "w") as file:
         for URL in empURLs:
             file.write(URL + '\n')
+
 
 def GetUsernameAndPassword(textFilePath):
     with open(textFilePath, "r") as file:
@@ -38,6 +40,15 @@ def GetUsernameAndPassword(textFilePath):
                 password = line
 
         return username, password
+
+
+# Change to desired driver path
+DRIVER_PATH = "C:\\Users\\jacob\\Downloads\\chromedriver_win32\\chromedriver.exe" #"C:\\Users\\jacob\\Desktop\\Senior Thesis\\chromedriver.exe"
+
+# Either change driver code, or create a file called "creds.txt" in the working directory
+USERNAME, PASSWORD = GetUsernameAndPassword("creds.txt")
+DATABASE_USERNAME, DATABASE_PASSWORD = GetUsernameAndPassword("dbcreds.txt")
+DATABASE = LinkedInDB("linkedin", "10.33.113.250", 3308, DATABASE_USERNAME, DATABASE_PASSWORD)
 
 """
 LinkedInScraper
@@ -248,16 +259,17 @@ class LinkedInScraper:
         print("New Entries:", additions)
 
     def ExtractEmployeeExperiences(self, employeeURL):
+        print("Extracting experience from: ", employeeURL, sep="")
+
         experiences = []
         # profileurl/details/experience
         self.driver.get(employeeURL+"/details/experience")
         # All information contained within <main>
         expSection = None
         try:
-            expSection = self.driver.find_element_by_tag_name("main")
-
+            expSection = self.driver.find_element(By.TAG_NAME, "main")
         except NoSuchElementException:
-            return []
+            return None
         # From main: div[2]/div/div/ul
 
         '''
@@ -289,13 +301,13 @@ class LinkedInScraper:
 
             try:
                 # Assuming the workers can have no more than 100 jobs
-                expList = ul.find_elements_by_xpath("./li")
+                expList = ul.find_elements(By.XPATH, "./li")
             except NoSuchElementException:
                 pass
 
         except TimeoutException:
             print("ERROR: Could not find experience list (1)")
-            return [-1]
+            return None
 
         for i, exp in enumerate(expList):
             # print()
@@ -319,8 +331,8 @@ class LinkedInScraper:
 
                 try:
                     # Test to see if subList
-                    pointForSubExp = exp.find_element_by_xpath("./div/div[2]/div[2]/ul/li/div/div/div[1]/ul/li[1]/span")
-                    expSublist = ul2.find_elements_by_xpath("./li")
+                    pointForSubExp = ul2.find_element(By.XPATH, "./li[1]/span")
+                    expSublist = ul2.find_elements(By.XPATH, "./li")
                 except NoSuchElementException:
                     pass
             except TimeoutException:
@@ -330,22 +342,24 @@ class LinkedInScraper:
             if expSublist:
                 company = ""
                 try:
-                    company = exp.find_element_by_xpath("./div/div[2]/div[1]/a/div/span/span[1]").text
+                    company = exp.find_element(By.XPATH, "./div/div[2]/div[1]/a/div/span/span[1]").text
                 except NoSuchElementException:
                     print("ERROR: Could not find company [1]")
-                    return [-1]
+                    print("Element that caused the error:")
+                    print(exp.text)
+                    return None
 
                 jobType = ""
                 # If this field is found, it applies to all subExp elements
                 try:
                     # Comes in the format <Full-time · 7 mos>
-                    jobType = exp.find_element_by_xpath("./div/div[2]/div[1]/a/span[1]/span[1]").text.split()[0]
+                    jobType = exp.find_element(By.XPATH, "./div/div[2]/div[1]/a/span[1]/span[1]").text.split()[0]
                 except NoSuchElementException:
                     pass
 
                 location = ""
                 try:
-                    location = exp.find_element_by_xpath("./div/div[2]/div[1]/a/span[2]/span[1]").text
+                    location = exp.find_element(By.XPATH, "./div/div[2]/div[1]/a/span[2]/span[1]").text
                 except NoSuchElementException:
                     pass
 
@@ -355,19 +369,19 @@ class LinkedInScraper:
                     experience.company_name = company
                     # Position
                     try:
-                        experience.position = subExp.find_element_by_xpath(
+                        experience.position = subExp.find_element(By.XPATH,
                             "./div/div[2]/div/a/div/span/span[1]").text
 
                     except NoSuchElementException:
                         print("ERROR: Could not find position [1]")
-                        return [-1]
+                        return None
 
                     # Type (Optional)
                     if jobType != "":
                         experience.employment_type = jobType
                     else:
                         try:
-                            experience.employment_type = subExp.find_element_by_xpath(
+                            experience.employment_type = subExp.find_element(By.XPATH,
                                 "./div/div/div[1]/ul/li[1]/div/div[2]/div/a/span[1]").text
                         except NoSuchElementException:
                             pass
@@ -377,14 +391,14 @@ class LinkedInScraper:
                     else:
                         # Location (Optional)
                         try:
-                            experience.location = subExp.find_element_by_xpath(
+                            experience.location = subExp.find_element(By.XPATH,
                                 "./div/div[2]/div/a/span[3]/span[1]").text
                         except NoSuchElementException:
                             pass
 
                     # Dates
                     try:
-                        dates = subExp.find_element_by_xpath(
+                        dates = subExp.find_element(By.XPATH,
                             "./div/div[2]/div/a/span/span[1]").text
                         # Nov 2021 - Present · 2 mos
                         dashInd = dates.rindex("-")
@@ -400,7 +414,6 @@ class LinkedInScraper:
                     experience.description = None
                     experience.media = None
 
-                    print(experience)
                     experiences.append(experience)
 
             # Single Element
@@ -409,14 +422,16 @@ class LinkedInScraper:
 
                 # Position
                 try:
-                    experience.position = exp.find_element_by_xpath("./div/div[2]/div/div[1]/div/span/span[1]").text
+                    experience.position = exp.find_element(By.XPATH, "./div/div[2]/div/div[1]/div/span/span[1]").text
                 except NoSuchElementException:
                     print("ERROR: Could not find position [2]")
-                    return [-1]
+                    print("Element that caused error:")
+                    print(exp.text)
+                    return None
 
                 # Company and Type
                 try:
-                    companyAndType = exp.find_element_by_xpath("./div/div[2]/div/div[1]/span[1]/span[1]").text
+                    companyAndType = exp.find_element(By.XPATH, "./div/div[2]/div/div[1]/span[1]/span[1]").text
 
                     try:
                         dotInd = companyAndType.rindex('·')
@@ -427,17 +442,17 @@ class LinkedInScraper:
 
                 except NoSuchElementException:
                     print("ERROR: Could not find company [3]")
-                    return [-1]
+                    return None
 
                 # Location (Optional)
                 try:
-                    experience.location = exp.find_element_by_xpath("./div/div[2]/div/div[1]/span[3]/span[1]").text
+                    experience.location = exp.find_element(By.XPATH, "./div/div[2]/div/div[1]/span[3]/span[1]").text
                 except NoSuchElementException:
                     pass
 
                 # Dates
                 try:
-                    dates = exp.find_element_by_xpath("./div/div[2]/div/div[1]/span[2]/span[1]").text
+                    dates = exp.find_element(By.XPATH, "./div/div[2]/div/div[1]/span[2]/span[1]").text
                     # Nov 2021 - Present · 2 mos
                     dashInd = dates.rindex("-")
                     experience.start_date = dates[:dashInd].strip()
@@ -451,14 +466,12 @@ class LinkedInScraper:
 
                 # Description (Optional)
                 try:
-                    experience.description = exp.find_element_by_xpath("./div/div[2]/div[2]/ul/li/div/ul/li/div/div/div/span[1]").text
+                    experience.description = exp.find_element(By.XPATH, "./div/div[2]/div[2]/ul/li/div/ul/li/div/div/div/span[1]").text
                 except NoSuchElementException:
                     pass
 
                 experience.media = None
 
-                print(experience)
-                print()
                 experiences.append(experience)
 
         return experiences
@@ -476,7 +489,7 @@ class LinkedInScraper:
                      "main")))
         except TimeoutException:
             print("Could not find main")
-            return []
+            return None
 
         educationList = None
         try:
@@ -495,7 +508,7 @@ class LinkedInScraper:
                 edu.degree_type = degreeArr[-1]
             except:
                 print("Could not find degree information")
-                return []
+                return None
 
             try:
                 edu.institution = educationElem.find_element(By.XPATH, "./div/div[2]/div[1]/a/div/span/span[1]").text
@@ -539,7 +552,6 @@ class LinkedInScraper:
                 try:
                     edu.description = elem.find_element(By.XPATH, "./div/ul/li/div/div/div/span[1]").text
                 except NoSuchElementException:
-                    print("Could not extract description")
                     edu.description = ""
 
             edu.media = None
@@ -574,7 +586,7 @@ class LinkedInScraper:
 
         if notFound:
             print("Skills page didn't load properly")
-            return {}
+            return None
 
         main = None
         try:
@@ -584,7 +596,7 @@ class LinkedInScraper:
                      "main")))
         except TimeoutException:
             print("Could not find main")
-            return {}
+            return None
 
         buttonParent = None
         try:
@@ -602,7 +614,7 @@ class LinkedInScraper:
             buttons = buttonParent.find_elements(By.TAG_NAME, "button")
         except NoSuchElementException:
             print("Could not find buttons [2]")
-            return {}
+            return None
 
         # Iterate through skills categories (skip first "All" button if more than one button)
         if len(buttons) > 1:
@@ -622,8 +634,14 @@ class LinkedInScraper:
 
             # Iterate through individual skills within category
             for skillElem in categoryList:
-                skill = skillElem.find_element(By.XPATH, "./div/div[2]/div[1]/a/div/span[1]/span[1]").text
-                skills[skillCategory].append(skill)
+                print("SKILL:", skillElem.text)
+                try:
+                    skill = skillElem.find_element(By.XPATH, "./div/div[2]/div[1]/a/div/span[1]/span[1]").text
+                    skills[skillCategory].append(skill)
+                except NoSuchElementException:
+                    print("ERROR: Skill within category not found")
+                    return None
+
 
         return skills
 
@@ -647,9 +665,6 @@ class LinkedInScraper:
                      "main")))
         except TimeoutException:
             print("ERROR: Could not find <main>")
-
-        # If main cannot be found, no profile elements can be extracted
-        if main is None:
             return None
 
         # Initialize Employee Object
@@ -694,10 +709,20 @@ class LinkedInScraper:
         except TimeoutException:
             pass
 
+        print("Successfully extracted base elements for", employeeURL)
         #currentEmployee.website = None
         currentEmployee.experience = self.ExtractEmployeeExperiences(employeeURL)  # List
+
+        if currentEmployee.experience is None:
+            return None
         currentEmployee.education = self.ExtractEmployeeEducation(employeeURL)  # List
+
+        if currentEmployee.education is None:
+            return None
         currentEmployee.skills = self.ExtractEmployeeSkills(employeeURL)  # Dict
+
+        if currentEmployee.skills is None:
+            return None
         
         # Deprecated, accomplishments have been reworked
         #currentEmployee.accomplishments = self.ExtractEmployeeAccomplishments(main)  # List

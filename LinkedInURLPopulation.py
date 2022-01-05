@@ -1,15 +1,8 @@
 from LinkedInDBAccess import LinkedInDB
-from LinkedInScraper import LinkedInScraper, GetUsernameAndPassword, WriteEmployeeURLsToFile
+from LinkedInScraper import LinkedInScraper, WriteEmployeeURLsToFile, \
+    DATABASE, USERNAME, PASSWORD, DRIVER_PATH
 
 from Employee import Employee
-
-# Change to desired driver path
-DRIVER_PATH = "C:\\Users\\jacob\\Desktop\\Senior Thesis\\chromedriver.exe"
-
-# Either change driver code, or create a file called "creds.txt" in the working directory
-USERNAME, PASSWORD = GetUsernameAndPassword("creds.txt")
-DATABASE_USERNAME, DATABASE_PASSWORD = GetUsernameAndPassword("dbcreds.txt")
-DATABASE = LinkedInDB("linkedin", "10.33.113.250", 3308, DATABASE_USERNAME, DATABASE_PASSWORD)
 
 def MakeQueryCombinations(companies, positions, locations):
     queries = []
@@ -18,7 +11,6 @@ def MakeQueryCombinations(companies, positions, locations):
             for location in locations:
                 queries.append(company + " " + position + " " + location)
     return queries
-
 
 
 # Driver Code
@@ -50,7 +42,21 @@ if USERNAME and PASSWORD != "":
 
     print("Number of Queries:", len(queries))
 
-    for query in queries:
+    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/josh-braida-358a5476")
+    print(emp)
+
+    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/anushanandam")
+    print(emp)
+
+    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/helly-patel-b3a804129")
+    print(emp)
+
+    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/akshaysathiya")
+    print(emp)
+
+    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/girishrawat")
+    print(emp)
+
 
     #driver.BatchLinkedInPeopleSearch(queries)
     #WriteEmployeeURLsToFile("employeeURLs.txt", driver.employeeURLs)
