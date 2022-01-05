@@ -19,7 +19,18 @@ def MakeQueryCombinations(companies, positions, locations):
                 queries.append(company + " " + position + " " + location)
     return queries
 
+def LoadQueries():
+    queries = []
+    with open("queries.txt", "r") as file:
+        for line in file:
+            queries.append(line)
+    return queries
 
+def WriteQueries(queries):
+    with open("queries.txt", "w") as file:
+        for query in queries:
+            if len(query.strip()) > 0:
+                file.write(query + "\n")
 
 # Driver Code
 if USERNAME and PASSWORD != "":
@@ -45,12 +56,22 @@ if USERNAME and PASSWORD != "":
                  "Detriot, MI", "Nashville, TN", "Arlington, VI", "Phoenix, AZ", "Orlando, FL", "Miami, FL",
                  "Jacksonville, FL"]
 
-
     queries = MakeQueryCombinations(companies, positions, locations)
+    WriteQueries(queries)
 
-    print("Number of Queries:", len(queries))
+    '''
+    queries = LoadQueries()
 
-    for query in queries:
+    lastQueryIndex = 0
+    for i, query in enumerate(queries):
+        success = driver.LinkedInPeopleSearch(query)
+        if not success:
+            lastQueryIndex = i
+            break
+
+    # Eliminate all successful queries from previous run
+    WriteQueries(queries[lastQueryIndex:])
+    '''
 
     #driver.BatchLinkedInPeopleSearch(queries)
     #WriteEmployeeURLsToFile("employeeURLs.txt", driver.employeeURLs)

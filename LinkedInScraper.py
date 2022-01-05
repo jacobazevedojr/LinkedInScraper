@@ -124,7 +124,7 @@ class LinkedInScraper:
                 print(f"Couldn't find element, retrying... {5 - tries} more times")
 
         if main is None:
-            return
+            return False
 
         peopleDiv = main.find_element(By.XPATH, "./div/div/div[2]")
         peopleList = peopleDiv.find_elements(By.TAG_NAME, "li")
@@ -152,6 +152,7 @@ class LinkedInScraper:
                 # Otherwise, the link has no relevance
             except NoSuchElementException:
                 print(f"Inspect element at {XPathLocation}")
+                return False
 
             print("*****************************************")
 
@@ -168,7 +169,6 @@ class LinkedInScraper:
     """
 
     def LinkedInPeopleSearch(self, query: str):
-        oldLen = len(self.employeeURLs)
         # Convert query string to a URLQuery
         queryArr = query.split(' ')
         URLQuery = ''
@@ -194,7 +194,7 @@ class LinkedInScraper:
             main = self.driver.find_element(By.TAG_NAME, "main")
         except NoSuchElementException:
             print("Could not find main")
-            return
+            return False
 
         try:
             div1 = main.find_element(By.TAG_NAME, "div")
@@ -230,22 +230,25 @@ class LinkedInScraper:
                     "/html/body/div[5]/div[3]/div/div[2]/div/div[1]/main/div/div/div[5]/div/div/ul/li[10]/button/span")
             except NoSuchElementException:
                 print("Element not found, defaulting to 0")
+                return False
 
         if pageButtonCount is not None:
             maxPageCount = int(pageButtonCount.text)
         else:
             maxPageCount = 0
 
+        print(query)
+        print(maxPageCount)
         for page in range(maxPageCount):
             print("Parsing Page", page)
             if page != 1:
                 self.driver.get(f"https://www.linkedin.com/search/results/people/?keywords={URLQuery}&page={str(page)}")
-            self.AddEmployeeURLsFromSearchPage()
+            success = self.AddEmployeeURLsFromSearchPage()
 
-        print("Done with extracting URLs from Search...")
-        newLen = len(self.employeeURLs)
-        additions = newLen - oldLen
-        print("New Entries:", additions)
+            if not success:
+                return False
+
+        return True
 
     def ExtractEmployeeExperiences(self, employeeURL):
         experiences = []
