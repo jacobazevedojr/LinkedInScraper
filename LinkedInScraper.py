@@ -14,19 +14,19 @@ from Education import Education
 from LinkedInDBAccess import LinkedInDB
 
 
-def ReadEmployeeURLsFromFile(textFilePath):
-    ans = []
+def ReadLinesFromFile(textFilePath):
+    array = []
     with open(textFilePath, "r") as file:
-        for i, line in enumerate(file):
-            ans.append(line)
+        for line in file:
+            array.append(line.strip())
 
-    return ans
+    return array
 
 
-def WriteEmployeeURLsToFile(textFilePath, empURLs):
+def WriteLinesToFile(textFilePath, array):
     with open(textFilePath, "w") as file:
-        for URL in empURLs:
-            file.write(URL + '\n')
+        for line in array:
+            file.write(line + '\n')
 
 
 def GetUsernameAndPassword(textFilePath):
@@ -43,7 +43,7 @@ def GetUsernameAndPassword(textFilePath):
 
 
 # Change to desired driver path
-DRIVER_PATH = "C:\\Users\\jacob\\Downloads\\chromedriver_win32\\chromedriver.exe" #"C:\\Users\\jacob\\Desktop\\Senior Thesis\\chromedriver.exe"
+DRIVER_PATH = "chromedriver.exe" # "C:\\Users\\jacob\\Downloads\\chromedriver_win32\\chromedriver.exe"
 
 # Either change driver code, or create a file called "creds.txt" in the working directory
 USERNAME, PASSWORD = GetUsernameAndPassword("creds.txt")
@@ -72,7 +72,7 @@ class LinkedInScraper:
             self.employeeURLs = self.database.__LoadEmployeeURLs__()
 
         if len(self.employeeURLs) == 0:
-            self.employeeURLs = ReadEmployeeURLsFromFile("employeeURLs.txt")
+            self.employeeURLs = ReadLinesFromFile("employeeURLs.txt")
 
         # Specifying options to help driver be more efficient
         chrome_options = webdriver.ChromeOptions()
@@ -102,7 +102,7 @@ class LinkedInScraper:
         except TimeoutException:
             print("ERROR: Could not login properly")
             self.driver = None
-            return
+            return None
 
         # Sometimes I am stopped for being a robot, this gives me time to prove I'm human
         # Otherwise, proceeds with program execution if element is found
@@ -113,6 +113,7 @@ class LinkedInScraper:
                      "#voyager-feed")))
         except TimeoutException:
             print("ERROR: Captcha needed")
+            return None
 
     """
     LinkedInScraper::AddEmployeeURLsFromSearchPage
@@ -126,13 +127,20 @@ class LinkedInScraper:
 
         self.driver.execute_script("window.scrollTo(0, 2000)")
 
+        refresh = False
         while main is None and tries < 5:
             try:
                 tries += 1
                 main = self.driver.find_element(By.TAG_NAME, "main")
-                print("Success")
             except NoSuchElementException:
                 print(f"Couldn't find element, retrying... {5 - tries} more times")
+
+            # Sometimes the pages don't load properly. Refresh and try to get page one last time
+            if tries == 5 and main is None and refresh is False:
+                self.driver.refresh()
+                self.driver.execute_script("window.scrollTo(0, 2000)")
+                tries = 0
+                refresh = True
 
         if main is None:
             return False
@@ -147,7 +155,6 @@ class LinkedInScraper:
             XPathLocation = f"./div/div/div[2]/div[1]/div[1]/div/span[1]/span/a[@href]"
             try:
                 link = element.find_element(By.XPATH, XPathLocation).get_attribute("href")
-                print(link)
 
                 # Checks if profile is accessible (Not "LinkedIn Member")
                 if link[25:27] == "in":
@@ -165,7 +172,8 @@ class LinkedInScraper:
                 print(f"Inspect element at {XPathLocation}")
                 return False
 
-            print("*****************************************")
+        return True
+
 
     """
     LinkedInScraper::LinkedInPeopleSearch
@@ -248,15 +256,15 @@ class LinkedInScraper:
         else:
             maxPageCount = 0
 
-        print(query)
-        print(maxPageCount)
-        for page in range(maxPageCount):
-            print("Parsing Page", page)
-            if page != 1:
-                self.driver.get(f"https://www.linkedin.com/search/results/people/?keywords={URLQuery}&page={str(page)}")
+        print("Query:", query)
+        print("Number of pages to parse:", maxPageCount)
+        for page in range(1, maxPageCount + 1):
+            print("Parsing page:", page)
+            self.driver.get(f"https://www.linkedin.com/search/results/people/?keywords={URLQuery}&page={str(page)}")
             success = self.AddEmployeeURLsFromSearchPage()
 
             if not success:
+                print("ERROR: Adding Employee URLs From Search Page was not successful")
                 return False
 
         return True
@@ -731,10 +739,6 @@ class LinkedInScraper:
         #currentEmployee.accomplishments = self.ExtractEmployeeAccomplishments(main)  # List
 
         return currentEmployee
-
-    def BatchLinkedInPeopleSearch(self, queries):
-        for query in queries:
-            self.LinkedInPeopleSearch(query)
 
 testEmployee = Employee()
 

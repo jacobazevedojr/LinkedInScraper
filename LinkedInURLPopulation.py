@@ -1,6 +1,9 @@
+import time
+
 from LinkedInDBAccess import LinkedInDB
-from LinkedInScraper import LinkedInScraper, WriteEmployeeURLsToFile, \
-    DATABASE, USERNAME, PASSWORD, DRIVER_PATH
+from LinkedInScraper import LinkedInScraper, \
+    DATABASE, USERNAME, PASSWORD, DRIVER_PATH, \
+    WriteLinesToFile, ReadLinesFromFile
 
 from Employee import Employee
 
@@ -12,22 +15,8 @@ def MakeQueryCombinations(companies, positions, locations):
                 queries.append(company + " " + position + " " + location)
     return queries
 
-def LoadQueries():
-    queries = []
-    with open("queries.txt", "r") as file:
-        for line in file:
-            queries.append(line)
-    return queries
-
-def WriteQueries(queries):
-    with open("queries.txt", "w") as file:
-        for query in queries:
-            if len(query.strip()) > 0:
-                file.write(query + "\n")
-
 # Driver Code
 if USERNAME and PASSWORD != "":
-    driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH, DATABASE)
 
     companies = ["Microsoft", "Tesla", "Facebook", "Apple", "Amazon", "Netflix", "Oracle", "IBM", "SAP", "Paypal",
                  "Salesforce", "Adobe", "VMWare", "Intuit", "Workday", "Palo Alto Networks", "Autodesk", "Zoom",
@@ -49,36 +38,46 @@ if USERNAME and PASSWORD != "":
                  "Detriot, MI", "Nashville, TN", "Arlington, VI", "Phoenix, AZ", "Orlando, FL", "Miami, FL",
                  "Jacksonville, FL"]
 
+    # Intialization of query combinations
+
     queries = MakeQueryCombinations(companies, positions, locations)
-    WriteQueries(queries)
+    WriteLinesToFile("queries.txt", queries)
 
-    '''
-    queries = LoadQueries()
+    # Load queries into memory
+    queries = ReadLinesFromFile("queries.txt")
 
-    lastQueryIndex = 0
-    for i, query in enumerate(queries):
-        success = driver.LinkedInPeopleSearch(query)
-        if not success:
-            lastQueryIndex = i
-            break
+    # Initialize LinkedInScraper
+    driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH, DATABASE)
 
-    # Eliminate all successful queries from previous run
-    WriteQueries(queries[lastQueryIndex:])
-    '''
-    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/josh-braida-358a5476")
-    print(emp)
+    if driver:
+        lastQueryIndex = 0
+        for i, query in enumerate(queries):
+            success = driver.LinkedInPeopleSearch(query)
+            if not success:
+                lastQueryIndex = i
+                break
+            else:
+                driver.writ
 
-    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/anushanandam")
-    print(emp)
+        # Eliminate all successful queries from previous run
+        WriteLinesToFile("queries.txt", queries[lastQueryIndex:])
 
-    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/helly-patel-b3a804129")
-    print(emp)
+        '''
+        emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/josh-braida-358a5476")
+        print(emp)
+    
+        emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/anushanandam")
+        print(emp)
+    
+        emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/helly-patel-b3a804129")
+        print(emp)
+    
+        emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/akshaysathiya")
+        print(emp)
+    
+        emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/girishrawat")
+        print(emp)
+        '''
 
-    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/akshaysathiya")
-    print(emp)
-
-    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/girishrawat")
-    print(emp)
-
-    #driver.BatchLinkedInPeopleSearch(queries)
-    #WriteEmployeeURLsToFile("employeeURLs.txt", driver.employeeURLs)
+        #driver.BatchLinkedInPeopleSearch(queries)
+        #WriteEmployeeURLsToFile("employeeURLs.txt", driver.employeeURLs)
