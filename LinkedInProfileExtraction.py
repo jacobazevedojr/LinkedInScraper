@@ -1,4 +1,4 @@
-from LinkedInScraper import LinkedInScraper, WriteEmployeeURLsToFile, \
+from LinkedInScraper import LinkedInScraper, \
     DATABASE, USERNAME, PASSWORD, DRIVER_PATH
 from Employee import Employee
 from LinkedInDBAccess import LinkedInDB
