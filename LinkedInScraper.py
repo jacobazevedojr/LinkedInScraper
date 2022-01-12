@@ -28,6 +28,10 @@ def WriteLinesToFile(textFilePath, array):
         for line in array:
             file.write(line + '\n')
 
+def AppendLinesToFile(textFilePath, array):
+    with open(textFilePath, "a") as file:
+        for line in array:
+            file.write(line + '\n')
 
 def GetUsernameAndPassword(textFilePath):
     with open(textFilePath, "r") as file:
@@ -66,19 +70,23 @@ class LinkedInScraper:
         self.database = database
 
         # Stores the URL of each employee discovered in a LinkedIn query
-        if self.database is None:
-            self.employeeURLs = []
-        else:
-            self.employeeURLs = self.database.__LoadEmployeeURLs__()
+        self.__employeeURLs__ = ReadLinesFromFile("employeeURLs.txt")
 
-        if len(self.employeeURLs) == 0:
-            self.employeeURLs = ReadLinesFromFile("employeeURLs.txt")
+        if len(self.__employeeURLs__) == 0:
+            if self.database is None:
+                self.__employeeURLs__ = []
+            else:
+                self.__employeeURLs__ = self.database.__LoadEmployeeURLs__()
+
+        self.newEmployeeURLs = []
+
+        print("Employee List Length:", len(self.__employeeURLs__))
 
         # Specifying options to help driver be more efficient
         chrome_options = webdriver.ChromeOptions()
 
-        chrome_options.headless = True
-        chrome_options.add_argument("--window-size=1920x1080")
+        #chrome_options.headless = True
+        #chrome_options.add_argument("--window-size=1920x1080")
 
         self.driver = webdriver.Chrome(executable_path=driver_path, options=chrome_options)
 
@@ -128,15 +136,19 @@ class LinkedInScraper:
         self.driver.execute_script("window.scrollTo(0, 2000)")
 
         refresh = False
-        while main is None and tries < 5:
+        maxTries = 3
+        while main is None and tries < maxTries:
             try:
                 tries += 1
                 main = self.driver.find_element(By.TAG_NAME, "main")
             except NoSuchElementException:
-                print(f"Couldn't find element, retrying... {5 - tries} more times")
+                if tries == 1:
+                    print()
+                print(f"Retrying... {maxTries - tries} more times")
 
             # Sometimes the pages don't load properly. Refresh and try to get page one last time
-            if tries == 5 and main is None and refresh is False:
+            if tries == maxTries and main is None and refresh is False:
+                print("Refreshing...")
                 self.driver.refresh()
                 self.driver.execute_script("window.scrollTo(0, 2000)")
                 tries = 0
@@ -145,14 +157,19 @@ class LinkedInScraper:
         if main is None:
             return False
 
-        peopleDiv = main.find_element(By.XPATH, "./div/div/div[2]")
-        peopleList = peopleDiv.find_elements(By.TAG_NAME, "li")
+        if tries > 1:
+            print("Parsing page:", end="")
+
+        peopleDiv = main.find_element(By.TAG_NAME, "ul")
+        peopleList = peopleDiv.find_elements(By.XPATH, "./li")
+        previousLink = ""
+
         for i, element in enumerate(peopleList):
             # Can be no more than 10 results per page
             # Need to have better break criteria than this
             if i > 9:
                 break
-            XPathLocation = f"./div/div/div[2]/div[1]/div[1]/div/span[1]/span/a[@href]"
+            XPathLocation = f"./div/div/div[2]/div[1]/div[1]/div/span[1]/span/a"
             try:
                 link = element.find_element(By.XPATH, XPathLocation).get_attribute("href")
 
@@ -165,11 +182,14 @@ class LinkedInScraper:
                             endLinkPosition = i
 
                     URL = link[:endLinkPosition]
-                    if URL not in self.employeeURLs:
-                        self.employeeURLs.append(URL)
+                    if URL not in self.__employeeURLs__:
+                        self.__employeeURLs__.append(URL)
+                        self.newEmployeeURLs.append(URL)
+                        previousLink = link
                 # Otherwise, the link has no relevance
             except NoSuchElementException:
                 print(f"Inspect element at {XPathLocation}")
+                print("Previously Successful:", previousLink)
                 return False
 
         return True
@@ -187,7 +207,8 @@ class LinkedInScraper:
         query - A string entered in how you would in the LinkedIn GUI. Converted into a URL query argument
     """
 
-    def LinkedInPeopleSearch(self, query: str):
+    def LinkedInPeopleSearch(self, query: str, outputFilePath: str):
+        print("Query:", query)
         # Convert query string to a URLQuery
         queryArr = query.split(' ')
         URLQuery = ''
@@ -256,10 +277,16 @@ class LinkedInScraper:
         else:
             maxPageCount = 0
 
-        print("Query:", query)
         print("Number of pages to parse:", maxPageCount)
         for page in range(1, maxPageCount + 1):
-            print("Parsing page:", page)
+            if page == 1:
+                print("Parsing page:", page, end="")
+            else:
+                if page % 10 == 0:
+                    print("\nParsing page:", page, end="")
+                else:
+                    print("", page, end="")
+
             self.driver.get(f"https://www.linkedin.com/search/results/people/?keywords={URLQuery}&page={str(page)}")
             success = self.AddEmployeeURLsFromSearchPage()
 
@@ -267,6 +294,12 @@ class LinkedInScraper:
                 print("ERROR: Adding Employee URLs From Search Page was not successful")
                 return False
 
+        print("\nSuccessfully extracted all profiles for:", query, "\n")
+        print("Appending,", len(self.newEmployeeURLs), ",new URLs to employee URL file...")
+        AppendLinesToFile(outputFilePath, self.newEmployeeURLs)
+        # Reset to nothing
+        self.newEmployeeURLs = []
+        print()
         return True
 
     def ExtractEmployeeExperiences(self, employeeURL):
@@ -655,7 +688,6 @@ class LinkedInScraper:
 
 
         return skills
-
 
     def ExtractEmployeeAccomplishments(self, employeeURL):
         pass

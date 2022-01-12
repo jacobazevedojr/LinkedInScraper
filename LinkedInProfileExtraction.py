@@ -12,12 +12,12 @@ import time
 def scrapeProfiles():
     driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH, DATABASE)
 
-    for i, URL in enumerate(driver.employeeURLs):
+    for i, URL in enumerate(driver.__employeeURLs__):
         empList = [driver.ExtractProfileAttributes(URL)]
 
         if empList[0] is None:
             # Write remaining employees to file
-            WriteEmployeeURLsToFile("employeeURLs.txt", driver.employeeURLs[i:])
+            WriteEmployeeURLsToFile("employeeURLs.txt", driver.__employeeURLs__[i:])
             print("ERROR:", URL, "did not extract properly. There is either a bug or scraping was blocked.")
             break
         else:

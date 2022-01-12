@@ -3,7 +3,7 @@ import time
 from LinkedInDBAccess import LinkedInDB
 from LinkedInScraper import LinkedInScraper, \
     DATABASE, USERNAME, PASSWORD, DRIVER_PATH, \
-    WriteLinesToFile, ReadLinesFromFile
+    WriteLinesToFile, ReadLinesFromFile, AppendLinesToFile
 
 from Employee import Employee
 
@@ -39,16 +39,24 @@ if USERNAME and PASSWORD != "":
                  "Jacksonville, FL"]
 
     # Intialization of query combinations
-
+    '''
     queries = MakeQueryCombinations(companies, positions, locations)
     WriteLinesToFile("queries.txt", queries)
+    '''
 
+    driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH, DATABASE)
+
+    driver.LinkedInPeopleSearch("Questcor Pharmaceuticals", "employeeURLs.txt")
+
+    '''
     # Load queries into memory
     queries = ReadLinesFromFile("queries.txt")
 
     # Initialize LinkedInScraper
     driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH, DATABASE)
 
+    # Extract profiles for each query
+    # If entire queries results are extracted successfully, append employees to file
     if driver:
         lastQueryIndex = 0
         for i, query in enumerate(queries):
@@ -56,28 +64,24 @@ if USERNAME and PASSWORD != "":
             if not success:
                 lastQueryIndex = i
                 break
-            else:
-                driver.writ
 
         # Eliminate all successful queries from previous run
         WriteLinesToFile("queries.txt", queries[lastQueryIndex:])
+    '''
 
-        '''
-        emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/josh-braida-358a5476")
-        print(emp)
-    
-        emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/anushanandam")
-        print(emp)
-    
-        emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/helly-patel-b3a804129")
-        print(emp)
-    
-        emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/akshaysathiya")
-        print(emp)
-    
-        emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/girishrawat")
-        print(emp)
-        '''
+    '''
+    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/josh-braida-358a5476")
+    print(emp)
 
-        #driver.BatchLinkedInPeopleSearch(queries)
-        #WriteEmployeeURLsToFile("employeeURLs.txt", driver.employeeURLs)
+    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/anushanandam")
+    print(emp)
+
+    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/helly-patel-b3a804129")
+    print(emp)
+
+    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/akshaysathiya")
+    print(emp)
+
+    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/girishrawat")
+    print(emp)
+    '''
