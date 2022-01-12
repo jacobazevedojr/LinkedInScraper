@@ -25,8 +25,10 @@ def scrapeProfiles():
             DATABASE.InsertEmployees(empList)
 
 
-schedule.every().day.at("24:00").do(scrapeProfiles, 'Beginning Scraping of LinkedIn Profiles')
+schedule.every().day.at("24:00").do(scrapeProfiles)
 
+'''
 while True:
     schedule.run_pending()
     time.sleep(60) # wait one minute
+'''
