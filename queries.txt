@@ -1,11 +1,3 @@
-Microsoft Software Engineer San Francisco Bay Area
-Microsoft Software Engineer San Jose, CA
-Microsoft Software Engineer Silicon Valley
-Microsoft Software Engineer Los Angeles, CA
-Microsoft Software Engineer San Diego, CA
-Microsoft Software Engineer Silicon Beach
-Microsoft Software Engineer Seattle, WA
-Microsoft Software Engineer Redmond, WA
 Microsoft Software Engineer New York City, NY
 Microsoft Software Engineer New York
 Microsoft Software Engineer Boston, MA

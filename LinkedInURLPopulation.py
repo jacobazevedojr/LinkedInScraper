@@ -1,11 +1,10 @@
-import time
-
-from LinkedInDBAccess import LinkedInDB
 from LinkedInScraper import LinkedInScraper, \
     DATABASE, USERNAME, PASSWORD, DRIVER_PATH, \
-    WriteLinesToFile, ReadLinesFromFile, AppendLinesToFile
+    WriteLinesToFile, ReadLinesFromFile
 
-from Employee import Employee
+import schedule
+import time
+
 
 def MakeQueryCombinations(companies, positions, locations):
     queries = []
@@ -15,6 +14,27 @@ def MakeQueryCombinations(companies, positions, locations):
                 queries.append(company + " " + position + " " + location)
     return queries
 
+def URLPopulation():
+    # Load queries into memory
+    queries = ReadLinesFromFile("queries.txt")
+
+    # Initialize LinkedInScraper
+    driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH, DATABASE)
+
+    # Extract profiles for each query
+    # If entire queries results are extracted successfully, append employees to file
+    if driver:
+        lastQueryIndex = 0
+        for i, query in enumerate(queries):
+            success = driver.LinkedInPeopleSearch(query, "employeeURLs.txt")
+            if not success:
+                lastQueryIndex = i
+                break
+
+        # Eliminate all successful queries from previous run
+        WriteLinesToFile("queries.txt", queries[lastQueryIndex:])
+
+'''
 # Driver Code
 if USERNAME and PASSWORD != "":
 
@@ -37,51 +57,36 @@ if USERNAME and PASSWORD != "":
                  "Madison, WI", "Trenton, NJ", "Provo, UT", "Las Vegas, NV", "Salt Lake City, UT", "Saint Louis, MO",
                  "Detriot, MI", "Nashville, TN", "Arlington, VI", "Phoenix, AZ", "Orlando, FL", "Miami, FL",
                  "Jacksonville, FL"]
+'''
 
-    # Intialization of query combinations
-    '''
-    queries = MakeQueryCombinations(companies, positions, locations)
-    WriteLinesToFile("queries.txt", queries)
-    '''
+'''
+# Intialization of query combinations
+queries = MakeQueryCombinations(companies, positions, locations)
+WriteLinesToFile("queries.txt", queries)
+'''
 
-    driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH, DATABASE)
+'''
+emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/josh-braida-358a5476")
+print(emp)
 
-    driver.LinkedInPeopleSearch("Questcor Pharmaceuticals", "employeeURLs.txt")
+emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/anushanandam")
+print(emp)
 
-    '''
-    # Load queries into memory
-    queries = ReadLinesFromFile("queries.txt")
+emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/helly-patel-b3a804129")
+print(emp)
 
-    # Initialize LinkedInScraper
-    driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH, DATABASE)
+emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/akshaysathiya")
+print(emp)
 
-    # Extract profiles for each query
-    # If entire queries results are extracted successfully, append employees to file
-    if driver:
-        lastQueryIndex = 0
-        for i, query in enumerate(queries):
-            success = driver.LinkedInPeopleSearch(query)
-            if not success:
-                lastQueryIndex = i
-                break
+emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/girishrawat")
+print(emp)
+'''
 
-        # Eliminate all successful queries from previous run
-        WriteLinesToFile("queries.txt", queries[lastQueryIndex:])
-    '''
+schedule.every().day.at("19:35").do(URLPopulation)
 
-    '''
-    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/josh-braida-358a5476")
-    print(emp)
+print("Scheduled URLPopulation. Please wait until the scheduled time")
+while True:
+    schedule.run_pending()
+    time.sleep(60) # wait one minute
 
-    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/anushanandam")
-    print(emp)
 
-    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/helly-patel-b3a804129")
-    print(emp)
-
-    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/akshaysathiya")
-    print(emp)
-
-    emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/girishrawat")
-    print(emp)
-    '''

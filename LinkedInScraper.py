@@ -85,8 +85,8 @@ class LinkedInScraper:
         # Specifying options to help driver be more efficient
         chrome_options = webdriver.ChromeOptions()
 
-        #chrome_options.headless = True
-        #chrome_options.add_argument("--window-size=1920x1080")
+        chrome_options.headless = True
+        chrome_options.add_argument("--window-size=1920x1080")
 
         self.driver = webdriver.Chrome(executable_path=driver_path, options=chrome_options)
 
@@ -157,7 +157,7 @@ class LinkedInScraper:
         if main is None:
             return False
 
-        if tries > 1:
+        if tries > 1 or refresh is True:
             print("Parsing page:", end="")
 
         peopleDiv = main.find_element(By.TAG_NAME, "ul")
@@ -295,7 +295,7 @@ class LinkedInScraper:
                 return False
 
         print("\nSuccessfully extracted all profiles for:", query, "\n")
-        print("Appending,", len(self.newEmployeeURLs), ",new URLs to employee URL file...")
+        print("Appending ->", len(self.newEmployeeURLs), "new URLs to employee URL file")
         AppendLinesToFile(outputFilePath, self.newEmployeeURLs)
         # Reset to nothing
         self.newEmployeeURLs = []
