@@ -82,7 +82,9 @@ emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/girishrawat")
 print(emp)
 '''
 
-schedule.every().day.at("19:35").do(URLPopulation)
+schedule.every().day.at("24:00").do(URLPopulation)
+schedule.every().day.at("2:00").do(URLPopulation)
+schedule.every().day.at("22:00").do(URLPopulation)
 
 print("Scheduled URLPopulation. Please wait until the scheduled time")
 while True:
