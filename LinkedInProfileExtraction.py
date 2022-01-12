@@ -24,10 +24,9 @@ def scrapeProfiles():
             # Insert emp into database
             DATABASE.InsertEmployees(empList)
 
-
+'''
 schedule.every().day.at("00:00").do(scrapeProfiles)
 
-'''
 while True:
     schedule.run_pending()
     time.sleep(60) # wait one minute

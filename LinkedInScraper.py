@@ -772,6 +772,7 @@ class LinkedInScraper:
 
         return currentEmployee
 
+'''
 testEmployee = Employee()
 
 testEmployee.user_url_id = "https://www.linkedin.com/in/jacobazevedojr/"
@@ -806,3 +807,4 @@ testEmployee.education[0].end_date = "2022"
 
 testEmployee.skills = {"Main": ["C++", "Python (Programming Language)", "Java"]}
 testEmployee.accomplishments = None
+'''
