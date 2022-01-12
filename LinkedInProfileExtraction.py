@@ -25,7 +25,7 @@ def scrapeProfiles():
             DATABASE.InsertEmployees(empList)
 
 
-schedule.every().day.at("24:00").do(scrapeProfiles)
+schedule.every().day.at("00:00").do(scrapeProfiles)
 
 '''
 while True:

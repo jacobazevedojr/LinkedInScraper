@@ -82,7 +82,7 @@ emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/girishrawat")
 print(emp)
 '''
 
-schedule.every().day.at("24:00").do(URLPopulation)
+schedule.every().day.at("00:00").do(URLPopulation)
 schedule.every().day.at("2:00").do(URLPopulation)
 schedule.every().day.at("22:00").do(URLPopulation)
 
