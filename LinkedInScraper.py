@@ -39,9 +39,9 @@ def GetUsernameAndPassword(textFilePath):
         password = ""
         for i, line in enumerate(file):
             if i == 0:
-                username = line
+                username = line.strip()
             elif i == 1:
-                password = line
+                password = line.strip()
 
         return username, password
 
