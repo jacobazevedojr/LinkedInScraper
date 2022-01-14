@@ -47,7 +47,7 @@ def GetUsernameAndPassword(textFilePath):
 
 
 # Change to desired driver path
-DRIVER_PATH = "chromedriver.exe" # "C:\\Users\\jacob\\Downloads\\chromedriver_win32\\chromedriver.exe"
+DRIVER_PATH = "chromedriver_linux" # chromdriver.exe # "C:\\Users\\jacob\\Downloads\\chromedriver_win32\\chromedriver.exe"
 
 # Either change driver code, or create a file called "creds.txt" in the working directory
 USERNAME, PASSWORD = GetUsernameAndPassword("creds.txt")
