@@ -113,14 +113,47 @@ class LinkedInScraper:
 
         # Sometimes I am stopped for being a robot, this gives me time to prove I'm human
         # Otherwise, proceeds with program execution if element is found
-        try:
-            WebDriverWait(self.driver, 30).until(
-                EC.presence_of_element_located(
-                    (By.CSS_SELECTOR,
-                     "#voyager-feed")))
-        except TimeoutException:
-            print("ERROR: Captcha needed")
-            return None
+        retryLoginCheck = True
+        while(retryLoginCheck)
+            try:
+                # Checking if login was successful
+                WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR,
+                         "#voyager-feed")))
+            except TimeoutException:
+                # Potentially Captcha or Pin required
+                try:
+                    # Checking for pin prompt
+                    main = WebDriverWait(self.driver, 10).until(
+                        EC.presence_of_element_located(
+                            (By.TAG_NAME,
+                             "main")))
+
+                    try:
+                        inputElement = main.find_element(By.NAME, "pin")
+
+                        print("Enter pin:", end="")
+                        pin = input()
+
+                        inputElement.send_keys(pin)
+
+                        submitButton = main.find_element(By.ID, "email-pin-submit-button")
+                        submitButton.click()
+                    except NoSuchElementException:
+                        pass
+
+
+                    # If prompt was successful, check for login success
+                    WebDriverWait(self.driver,10).until(
+                        EC.presence_of_element_located(
+                            (By.CSS_SELECTOR,
+                             "#voyager-feed")))
+                except TimeoutException:
+                    print("ERROR: Captcha needed")
+                    return None
+
+                retryLoginCheck = False
 
     """
     LinkedInScraper::AddEmployeeURLsFromSearchPage
