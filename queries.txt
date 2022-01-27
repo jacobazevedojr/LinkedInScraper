@@ -1,29 +1,3 @@
-Microsoft Software Engineer New York City, NY
-Microsoft Software Engineer New York
-Microsoft Software Engineer Boston, MA
-Microsoft Software Engineer Austin, TX
-Microsoft Software Engineer Dallas, TX
-Microsoft Software Engineer Houston, TX
-Microsoft Software Engineer Dallas-Ft. Worth, TX
-Microsoft Software Engineer Washington D.C.
-Microsoft Software Engineer Chicago, IL
-Microsoft Software Engineer Huntsville, AL
-Microsoft Software Engineer Boulder, CO
-Microsoft Software Engineer Denver, CO
-Microsoft Software Engineer Cleveland, OH
-Microsoft Software Engineer Columbus, OH
-Microsoft Software Engineer Atlanta, GA
-Microsoft Software Engineer Remote
-Microsoft Software Engineer Raleigh, NC
-Microsoft Software Engineer Charlotte, NC
-Microsoft Software Engineer Durham-Chapel Hill, NC
-Microsoft Software Engineer Baltimore, MD
-Microsoft Software Engineer Madison, WI
-Microsoft Software Engineer Trenton, NJ
-Microsoft Software Engineer Provo, UT
-Microsoft Software Engineer Las Vegas, NV
-Microsoft Software Engineer Salt Lake City, UT
-Microsoft Software Engineer Saint Louis, MO
 Microsoft Software Engineer Detriot, MI
 Microsoft Software Engineer Nashville, TN
 Microsoft Software Engineer Arlington, VI

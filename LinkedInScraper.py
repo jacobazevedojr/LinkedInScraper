@@ -47,7 +47,7 @@ def GetUsernameAndPassword(textFilePath):
 
 
 # Change to desired driver path
-DRIVER_PATH = "/home/jazevedo/LinkedInScraper/chromedriver" # "chromedriver.exe" "C:\\Users\\jacob\\Downloads\\chromedriver_win32\\chromedriver.exe"
+DRIVER_PATH = "chromedriver.exe" # "/home/jazevedo/LinkedInScraper/chromedriver" # "C:\\Users\\jacob\\Downloads\\chromedriver_win32\\chromedriver.exe"
 
 
 # Either change driver code, or create a file called "creds.txt" in the working directory
@@ -70,15 +70,15 @@ class LinkedInScraper:
         # Database connection and methods for inserting employee information
         self.database = database
 
+        if self.database is None:
+            return None
+        else:
+            self.__employeeURLsInDB__ = self.database.__LoadEmployeeURLs__()
+
         # Stores the URL of each employee discovered in a LinkedIn query
-        self.__employeeURLs__ = ReadLinesFromFile("employeeURLs.txt")
+        self.__employeeURLsToBeScraped__ = self.ExtractEmployeeURLsToBeScraped("employeeURLs.txt")
 
-        if len(self.__employeeURLs__) == 0:
-            if self.database is None:
-                self.__employeeURLs__ = []
-            else:
-                self.__employeeURLs__ = self.database.__LoadEmployeeURLs__()
-
+        # Contains the newly found employeeURLs
         self.newEmployeeURLs = []
 
         # Specifying options to help driver be more efficient
@@ -151,6 +151,20 @@ class LinkedInScraper:
                 print("ERROR: Captcha needed")
                 return None
 
+    def ExtractEmployeeURLsToBeScraped(self, pathToEmployeeURLsFile):
+        employeeURLsToBeScraped = []
+
+        employeeURLsInFile = ReadLinesFromFile(pathToEmployeeURLsFile)
+
+        # Make sure we don't extract the same profile twice
+        for URL in employeeURLsInFile:
+            if URL not in self.__employeeURLsInDB__:
+                employeeURLsToBeScraped.append(URL)
+
+        # Rewrite text file to only contain "non-extracted" profiles
+        WriteLinesToFile(pathToEmployeeURLsFile, employeeURLsToBeScraped)
+
+        return employeeURLsToBeScraped
 
     """
     LinkedInScraper::AddEmployeeURLsFromSearchPage
@@ -211,8 +225,8 @@ class LinkedInScraper:
                             endLinkPosition = i
 
                     URL = link[:endLinkPosition]
-                    if URL not in self.__employeeURLs__:
-                        self.__employeeURLs__.append(URL)
+                    if URL not in self.__employeeURLsToBeScraped__:
+                        self.__employeeURLsToBeScraped__.append(URL)
                         self.newEmployeeURLs.append(URL)
                         previousLink = link
                 # Otherwise, the link has no relevance
@@ -564,10 +578,19 @@ class LinkedInScraper:
             print("Could not find main")
             return None
 
+        educationUL = None
+        try:
+            educationUL = WebDriverWait(main, 2).until(
+                EC.presence_of_element_located(
+                    (By.TAG_NAME,
+                     "ul")))
+        except TimeoutException:
+            print("Could not find education list <ul>")
+            return None
+
         educationList = None
         try:
-            ul = main.find_element(By.TAG_NAME, "ul")
-            educationList = ul.find_elements(By.XPATH, "./child::*")
+            educationList = educationUL.find_elements(By.XPATH, "./li")
         except NoSuchElementException:
             print("Could not find education list")
             educationList = []
@@ -629,10 +652,14 @@ class LinkedInScraper:
 
             edu.media = None
 
-            dates = educationElem.find_element(By.XPATH, "./div/div[2]/div[1]/a/span[2]/span[1]").text
-            dateArr = dates.split(" - ")
-            edu.start_date = dateArr[0]
-            edu.end_date = dateArr[-1]
+            try:
+                dates = educationElem.find_element(By.XPATH, "./div/div[2]/div[1]/a/span[2]/span[1]").text
+                dateArr = dates.split(" - ")
+                edu.start_date = dateArr[0]
+                edu.end_date = dateArr[-1]
+            except NoSuchElementException:
+                edu.start_date = ""
+                edu.end_date = ""
 
             education.append(edu)
 
@@ -644,26 +671,11 @@ class LinkedInScraper:
         # Navigate to skills webpage
         self.driver.get(employeeURL + "/details/skills")
 
-        notFound = True
-        tries = 0
-        while notFound or tries < 5:
-            try:
-                skillTitle = self.driver.find_element(
-                    By.XPATH, "/html/body/div[6]/div[3]/div/div/div[2]/div/div/main/section/div[1]/div/h2").text
-                if skillTitle == "Skills":
-                    notFound = False
-            except NoSuchElementException:
-                pass
-
-            tries += 1
-
-        if notFound:
-            print("Skills page didn't load properly")
-            return None
+        time.sleep(10)
 
         main = None
         try:
-            main = WebDriverWait(self.driver, 2).until(
+            main = WebDriverWait(self.driver, 5).until(
                 EC.visibility_of_element_located(
                     (By.TAG_NAME,
                      "main")))
@@ -671,10 +683,12 @@ class LinkedInScraper:
             print("Could not find main")
             return None
 
+        #self.driver.get_screenshot_as_file('screenshot.png')
+
         buttonParent = None
         try:
-            buttonParent = WebDriverWait(main, 2).until(
-                EC.presence_of_element_located(
+            buttonParent = WebDriverWait(main, 5).until(
+                EC.visibility_of_element_located(
                     (By.XPATH,
                      "./section/div[2]/div[1]")))
         except TimeoutException:
@@ -683,8 +697,7 @@ class LinkedInScraper:
 
         buttons = None
         try:
-
-            buttons = buttonParent.find_elements(By.TAG_NAME, "button")
+            buttons = buttonParent.find_elements(By.XPATH, "./button")
         except NoSuchElementException:
             print("Could not find buttons [2]")
             return None
@@ -701,20 +714,23 @@ class LinkedInScraper:
             categoryList = None
             try:
                 categoryListParent = main.find_element(By.XPATH, f"./section/div[2]/div[{3 + i}]/div/div/div[1]/ul")
-                categoryList = categoryListParent.find_elements(By.XPATH, "./child::*")
+                categoryList = categoryListParent.find_elements(By.XPATH, "./li")
             except NoSuchElementException:
                 print("Could not extract skill category list")
 
             # Iterate through individual skills within category
             for skillElem in categoryList:
-                print("SKILL:", skillElem.text)
                 try:
                     skill = skillElem.find_element(By.XPATH, "./div/div[2]/div[1]/a/div/span[1]/span[1]").text
                     skills[skillCategory].append(skill)
                 except NoSuchElementException:
-                    print("ERROR: Skill within category not found")
-                    return None
-
+                    # Skill may not have a link (<a> element)
+                    try:
+                        skill = skillElem.find_element(By.XPATH, "./div/div[2]/div[1]/div[1]/div/span/span[1]").text
+                        skills[skillCategory].append(skill)
+                    except NoSuchElementException:
+                        print("ERROR: Skill within category not found")
+                        return None
 
         return skills
 
@@ -795,11 +811,13 @@ class LinkedInScraper:
 
         if currentEmployee.skills is None:
             return None
-        
-        # Deprecated, accomplishments have been reworked
-        #currentEmployee.accomplishments = self.ExtractEmployeeAccomplishments(main)  # List
 
         return currentEmployee
+
+    def waitForJStoLoad(self):
+        # From Stack OF; To Do
+        # See https://stackoverflow.com/questions/10720325/selenium-webdriver-wait-for-complex-page-with-javascript-to-load
+        pass
 
 '''
 testEmployee = Employee()
@@ -835,5 +853,4 @@ testEmployee.education[0].start_date = "2020"
 testEmployee.education[0].end_date = "2022"
 
 testEmployee.skills = {"Main": ["C++", "Python (Programming Language)", "Java"]}
-testEmployee.accomplishments = None
 '''

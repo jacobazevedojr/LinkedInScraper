@@ -65,23 +65,6 @@ queries = MakeQueryCombinations(companies, positions, locations)
 WriteLinesToFile("queries.txt", queries)
 '''
 
-'''
-emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/josh-braida-358a5476")
-print(emp)
-
-emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/anushanandam")
-print(emp)
-
-emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/helly-patel-b3a804129")
-print(emp)
-
-emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/akshaysathiya")
-print(emp)
-
-emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/girishrawat")
-print(emp)
-'''
-
 schedule.every().day.at("00:00").do(URLPopulation)
 schedule.every().day.at("02:00").do(URLPopulation)
 schedule.every().day.at("22:00").do(URLPopulation)

@@ -43,7 +43,7 @@ class LinkedInDB:
             cursor.execute(query)
 
             for (user_url) in cursor:
-                employeeURLs.append(user_url)
+                employeeURLs.append("https://www.linkedin.com/in/" + user_url)
 
         except Error as error:
             print(error)
@@ -57,23 +57,20 @@ class LinkedInDB:
     def InsertEmployees(self, employeeList: Employee):
         for employee in employeeList:
             # Store employee attr in Employee table
-            empInsert, expInsert, eduInsert, skillInsert, accompInsert = self.__ExtractTableTuples__(
-                employee)
+            empInsert, expInsert, eduInsert, skillInsert = self.__ExtractTableTuples__(employee)
 
             emp_id = self.__InsertEmployeeTuple__(empInsert)
             self.__InsertExperienceTuples__(expInsert, emp_id)
             self.__InsertEducationTuples__(eduInsert, emp_id)
             self.__InsertSkillTuples__(skillInsert, emp_id)
-            self.__InsertAccomplishmentTuples__(accompInsert, emp_id)
 
     def __ExtractTableTuples__(self, employee):
         empInsert = self.__ExtractEmployeeTuple__(employee)
         expInsert = self.__ExtractExperienceTuples__(employee)
         eduInsert = self.__ExtractEducationTuples__(employee)
         skillInsert = self.__ExtractSkillTuples__(employee)
-        accompInsert = self.__ExtractAccomplishmentTuples__(employee)
 
-        return empInsert, expInsert, eduInsert, skillInsert, accompInsert
+        return empInsert, expInsert, eduInsert, skillInsert
 
     def __ExtractEmployeeTuple__(self, employee):
         return ( employee.user_url_id, employee.name, employee.location, employee.header, employee.about )
@@ -89,8 +86,7 @@ class LinkedInDB:
 
         return tuples
 
-    # NEED TO CAST DATES
-    # SHOULD DECLARE A FUNCTION
+
     def __ExtractEducationTuples__(self, employee):
         edus = employee.education
 
@@ -113,6 +109,8 @@ class LinkedInDB:
 
         return tuples
 
+    '''
+    Deprecated, accomplishments are no longer stored as before
     def __ExtractAccomplishmentTuples__(self, employee):
         if employee.accomplishments is None:
             return []
@@ -123,6 +121,7 @@ class LinkedInDB:
                 tuples.append((accomp, category))
 
         return tuples
+    '''
 
     def __CastToDate__(self, dateStr: str) -> date:
         if dateStr.__contains__('Present') or len(dateStr) == 0:
@@ -137,6 +136,7 @@ class LinkedInDB:
 
         return d.date()
 
+
     """
     InsertToLinkedInDB::__InsertEmployeeTuple__
 
@@ -146,7 +146,6 @@ class LinkedInDB:
     Parameters:
         empInsert -- Employee components needed for Employee tuple
     """
-
     def __InsertEmployeeTuple__(self, empInsert: (str)) -> int:
         print("Inserting Employee Tuples")
         query = "INSERT INTO employee(user_url,name,location,header,about) " \
@@ -263,6 +262,8 @@ class LinkedInDB:
             cursor.close()
             conn.close()
 
+    '''
+    Deprecated, accomplishments are no longer stored as before
     def __InsertAccomplishmentTuples__(self, accompInsert: [(str)], emp_id: int):
         if len(accompInsert) == 0:
             return
@@ -292,3 +293,4 @@ class LinkedInDB:
         finally:
             cursor.close()
             conn.close()
+    '''

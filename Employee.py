@@ -6,7 +6,6 @@ class Employee:
         self.experience = [] # List
         self.education = [] # List
         self.skills = {} # Dict
-        self.accomplishments = {} # Dict
 
         self.user_url_id = ""
         self.name = ""
@@ -36,13 +35,7 @@ class Employee:
                 for skl in self.skills[key]:
                     skill += ("          " + str(skl) + '\n')
 
-        if self.accomplishments:
-            for key in self.accomplishments:
-                acom += ("     " + key + '\n')
-                for ac in self.accomplishments[key]:
-                    acom += (str(ac) + '\n')
-
-        return f"Name: {self.name}\nHeader: {self.header}\nLocation: {self.location}\nAbout:\n     {self.about}\nExperience:\n{exp}Education:\n{edu}\nSkills:\n{skill}Accomplishments:\n{acom}"
+        return f"Name: {self.name}\nHeader: {self.header}\nLocation: {self.location}\nAbout:\n     {self.about}\nExperience:\n{exp}Education:\n{edu}\nSkills:\n{skill}"
 
     def __toDict__(self):
         empDict = {}
@@ -52,5 +45,3 @@ class Employee:
         empDict['education'] = [x.__toDict__ for x in self.education]
         # Value is a dictionary of category-skill List pairs
         empDict['skills'] = self.skills
-        # Value is a dictionary of category-accomplishment List pairs
-        empDict['accomplishments'] = self.accomplishments
