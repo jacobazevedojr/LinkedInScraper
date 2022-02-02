@@ -32,7 +32,7 @@ class EmployeeExperience(Base):
     __tablename__ = 'employee_experience'
     emp_id = Column('emp_id', Integer, ForeignKey('employees.id'), primary_key=True)
     exp_id = Column('exp_id', Integer, ForeignKey('experiences.id'), primary_key=True)
-    start_date = Column('start_date', Date)
+    start_date = Column('start_date', Date, primary_key=True)
     end_date = Column('end_date', Date)
     location = Column('location', String(100))
     description = Column('description', Text)
@@ -199,7 +199,7 @@ class LinkedInDB:
                     if ski is None:
                         ski = skill
                         session.add(skill)
-                        
+
                     skillList[skillTuple] = ski
 
                 emp.skills.append(ski)
