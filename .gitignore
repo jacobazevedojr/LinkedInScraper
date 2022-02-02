@@ -6,3 +6,4 @@ queries.txt
 \.idea
 \.png
 \.html
+__pycache__/
