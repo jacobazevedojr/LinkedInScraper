@@ -132,44 +132,75 @@ class LinkedInDB:
                 print(emp.user_url, "is a duplicate")
                 continue
 
+            expList = {}
             for exp in experiences:
-                experience = session.query(Experience). \
-                    filter(Experience.position == exp[0].position,
-                           Experience.company_name == exp[0].company_name).first()
+                experience = None
+                expTuple = (exp[0].position, exp[0].company_name)
 
-                if experience is None:
-                    experience = exp[0]
-                    session.add(exp[0])
+                # Sometimes, there are duplicate experiences before those experiences are entered into the DB
+                # For instance, someone works for Tesla as an Intern twice while no one else has worked
+                # the same position, company pair before. The query below will return nothing despite already adding
+                # the new position, company pair earlier in the for loop.
+                if expTuple in expList:
+                    experience = expList[expTuple]
+                else:
+                    # Check if the tuple exists in the database
+                    experience = session.query(Experience). \
+                        filter(Experience.position == exp[0].position,
+                               Experience.company_name == exp[0].company_name).first()
+
+                    if experience is None:
+                        experience = exp[0]
+                        session.add(exp[0])
+
+                    # Since the tuple didn't exist before, we add it to the dictionary
+                    expList[expTuple] = experience
 
                 exp[1].experience = experience
                 # Append association object only
                 emp.experiences.append(exp[1])
                 session.add(exp[1])
 
+            eduList = {}
             for edu in educations:
-                education = session.query(Education). \
-                    filter(Education.institution == edu[0].institution, Education.degree == edu[0].degree,
-                           Education.degree_type == edu[0].degree_type).first()
+                education = None
+                eduTuple = (edu[0].institution, edu[0].degree, edu[0].degree_type)
 
+                if eduTuple in eduList:
+                    education = eduList[eduTuple]
+                else:
+                    education = session.query(Education). \
+                        filter(Education.institution == edu[0].institution, Education.degree == edu[0].degree,
+                               Education.degree_type == edu[0].degree_type).first()
 
-                if education is None:
-                    education = edu[0]
-                    session.add(edu[0])
+                    if education is None:
+                        education = edu[0]
+                        session.add(edu[0])
+
+                    eduList[eduTuple] = education
 
                 edu[1].education = education
                 # Append association object only
                 emp.educations.append(edu[1])
                 session.add(edu[1])
 
-
+            skillList = {}
             for skill in skills:
-                ski = session.query(Skill). \
-                    filter(Skill.skill == skill.skill,
-                           Skill.category == skill.category).first()
+                ski = None
+                skillTuple = (skill.skill, skill.category)
 
-                if ski is None:
-                    ski = skill
-                    session.add(skill)
+                if skillTuple in skillList:
+                    ski = skillList[skillTuple]
+                else:
+                    ski = session.query(Skill). \
+                        filter(Skill.skill == skill.skill,
+                               Skill.category == skill.category).first()
+
+                    if ski is None:
+                        ski = skill
+                        session.add(skill)
+                        
+                    skillList[skillTuple] = ski
 
                 emp.skills.append(ski)
 
