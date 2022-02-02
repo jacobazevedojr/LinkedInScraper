@@ -236,7 +236,7 @@ class LinkedInDB:
         return tuples
 
     def __castToDate__(self, dateStr: str) -> date:
-        if dateStr.__contains__('Present') or len(dateStr) == 0:
+        if dateStr is not None or dateStr.__contains__('Present') or len(dateStr) == 0:
             return None
 
         dateCheck = dateStr.split()
