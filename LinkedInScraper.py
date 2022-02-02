@@ -542,15 +542,31 @@ class LinkedInScraper:
 
                 # Dates
                 try:
+                    noEnd = False
                     dates = exp.find_element(By.XPATH, "./div/div[2]/div/div[1]/span[2]/span[1]").text
                     # Nov 2021 - Present · 2 mos
-                    dashInd = dates.rindex("-")
-                    experience.start_date = dates[:dashInd].strip()
                     try:
-                        dotInd = dates.rindex('·')
-                        experience.end_date = dates[dashInd + 2:dotInd].strip()
+                        dashInd = dates.rindex("-")
                     except ValueError:
-                        experience.end_date = dates[dashInd + 2:].strip()
+                        noEnd = True
+                        spaces = 0
+                        for i, char in enumerate(dates):
+                            if char == ' ':
+                                spaces += 1
+                            if spaces == 2:
+                                dashInd = i
+                                break
+
+                    experience.start_date = dates[:dashInd].strip()
+
+                    if noEnd == False:
+                        try:
+                            dotInd = dates.rindex('·')
+                            experience.end_date = dates[dashInd + 2:dotInd].strip()
+                        except ValueError:
+                            experience.end_date = dates[dashInd + 2:].strip()
+                    else:
+                        experience.end_date = None
                 except NoSuchElementException:
                     pass
 
