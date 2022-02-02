@@ -5,7 +5,6 @@ from LinkedInScraper import LinkedInScraper, \
 import schedule
 import time
 
-
 def MakeQueryCombinations(companies, positions, locations):
     queries = []
     for company in companies:
@@ -69,7 +68,7 @@ schedule.every().day.at("00:00").do(URLPopulation)
 schedule.every().day.at("02:00").do(URLPopulation)
 schedule.every().day.at("22:00").do(URLPopulation)
 
-print("Test run of scraper...")
+print("Initial Test Run of People Scraper...")
 URLPopulation()
 
 print("Scheduled URLPopulation. Please wait until the scheduled time")

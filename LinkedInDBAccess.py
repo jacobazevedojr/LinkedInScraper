@@ -10,6 +10,86 @@ from Employee import Employee
 from Education import Education
 from Experience import Experience
 
+from sqlalchemy import create_engine, Column, String, Text, DateTime, Integer, ForeignKey, Table, Date, UniqueConstraint
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from sqlalchemy.exc import IntegrityError
+
+Base = declarative_base()
+
+class EmployeeEducation(Base):
+    __tablename__ = 'employee_education'
+    emp_id = Column('emp_id', Integer, ForeignKey('employees.id'), primary_key=True)
+    edu_id = Column('edu_id', Integer, ForeignKey('educations.id'), primary_key=True)
+    start_date = Column('start_date', Date)
+    end_date = Column('end_date', Date)
+    GPA = Column('GPA', String(100))
+    activities = Column('activities', Text)
+    description = Column('description', Text)
+
+    education = relationship("Education")
+
+class EmployeeExperience(Base):
+    __tablename__ = 'employee_experience'
+    emp_id = Column('emp_id', Integer, ForeignKey('employees.id'), primary_key=True)
+    exp_id = Column('exp_id', Integer, ForeignKey('experiences.id'), primary_key=True)
+    start_date = Column('start_date', Date)
+    end_date = Column('end_date', Date)
+    location = Column('location', String(100))
+    description = Column('description', Text)
+    employment_type = Column('employment_type', String(100))
+
+    experience = relationship("Experience")
+
+employee_skill = Table('employee_skill', Base.metadata,
+                       Column('emp_id', Integer, ForeignKey('employees.id'), primary_key=True),
+                       Column('skill_id', Integer, ForeignKey('skills.id'), primary_key=True)
+                       )
+
+
+class Employee(Base):
+    # Has an implicit __init__() which accepts keywords according to those listed below
+    __tablename__ = 'employees'
+
+    id = Column(Integer, primary_key=True)
+    user_url = Column(String(100), unique=True)
+    name = Column(String(100))
+    location = Column(String(100))
+    header = Column(String(250))
+    about = Column(Text)
+
+    educations = relationship("EmployeeEducation")
+    experiences = relationship("EmployeeExperience")
+    skills = relationship("Skill", secondary=employee_skill)
+
+    def __repr__(self):
+        return "<Employee(user_url='%s'\nname='%s'\nlocation='%s'\nheader='%s')>" % \
+               (self.user_url, self.name, self.location, self.header)
+
+
+class Education(Base):
+    __tablename__ = 'educations'
+
+    id = Column(Integer, primary_key=True)
+    institution = Column(String(100))
+    degree = Column(String(100))
+    degree_type = Column(String(100))
+    UniqueConstraint(institution, degree, degree_type)
+
+class Experience(Base):
+    __tablename__ = 'experiences'
+
+    id = Column(Integer, primary_key=True)
+    position = Column(String(100))
+    company_name = Column(String(100))
+    UniqueConstraint(position, company_name)
+
+class Skill(Base):
+    __tablename__ = 'skills'
+    id = Column(Integer, primary_key=True)
+    skill = Column(String(100))
+    category = Column(String(100))
+    UniqueConstraint(skill, category)
+
 class LinkedInDB:
     def __init__(self, database, host, port, user, password):
         self.host = host
@@ -17,113 +97,145 @@ class LinkedInDB:
         self.user = user
         self.password = password
         self.database = database
+        self.engine = create_engine(f"mysql+mysqlconnector://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}")
+
 
     def __connect__(self):
-        """ Connect to MySQL database """
-        conn = None
-        try:
-            conn = mysql.connector.connect(database=self.database,
-                                           host=self.host,
-                                           port=self.port,
-                                           user=self.user,
-                                           password=self.password)
+        ''' Connect to MySQL database '''
 
-            return conn
-        except Error as e:
-            print(e)
+        Session = sessionmaker(bind=self.engine, autoflush=False)
+        session = Session()
 
-    def __LoadEmployeeURLs__(self):
-        query = 'SELECT e.user_url FROM EMPLOYEE as e'
+        return session
+
+    def __createTables__(self):
+        Base.metadata.create_all(self.engine)
+
+    def __loadEmployeeURLs__(self):
+        session = self.__connect__()
         employeeURLs = []
 
-        try:
-            conn = self.__connect__()
+        for instance in session.query(Employee).order_by(Employee.id):
+            employeeURLs.append(instance.user_url)
 
-            cursor = conn.cursor()
-            cursor.execute(query)
-
-            for (user_url) in cursor:
-                employeeURLs.append("https://www.linkedin.com/in/" + user_url)
-
-        except Error as error:
-            print(error)
-
-        finally:
-            cursor.close()
-            conn.close()
-
+        session.close()
         return employeeURLs
 
-    def InsertEmployees(self, employeeList: Employee):
+    def insertEmployees(self, employeeList):
+        session = self.__connect__()
         for employee in employeeList:
-            # Store employee attr in Employee table
-            empInsert, expInsert, eduInsert, skillInsert = self.__ExtractTableTuples__(employee)
+            emp, experiences, educations, skills = self.__extractTableTuples__(employee)
+            employeeDupe = session.query(Employee). \
+                            filter(Employee.user_url==emp.user_url).first()
 
-            emp_id = self.__InsertEmployeeTuple__(empInsert)
-            self.__InsertExperienceTuples__(expInsert, emp_id)
-            self.__InsertEducationTuples__(eduInsert, emp_id)
-            self.__InsertSkillTuples__(skillInsert, emp_id)
+            if employeeDupe is not None:
+                print(emp.user_url, "is a duplicate")
+                continue
 
-    def __ExtractTableTuples__(self, employee):
-        empInsert = self.__ExtractEmployeeTuple__(employee)
-        expInsert = self.__ExtractExperienceTuples__(employee)
-        eduInsert = self.__ExtractEducationTuples__(employee)
-        skillInsert = self.__ExtractSkillTuples__(employee)
+            for exp in experiences:
+                experience = session.query(Experience). \
+                    filter(Experience.position == exp[0].position,
+                           Experience.company_name == exp[0].company_name).first()
 
-        return empInsert, expInsert, eduInsert, skillInsert
+                if experience is None:
+                    experience = exp[0]
+                    session.add(exp[0])
 
-    def __ExtractEmployeeTuple__(self, employee):
-        return ( employee.user_url_id, employee.name, employee.location, employee.header, employee.about )
+                exp[1].experience = experience
+                # Append association object only
+                emp.experiences.append(exp[1])
+                session.add(exp[1])
 
-    def __ExtractExperienceTuples__(self, employee):
+            for edu in educations:
+                education = session.query(Education). \
+                    filter(Education.institution == edu[0].institution, Education.degree == edu[0].degree,
+                           Education.degree_type == edu[0].degree_type).first()
+
+
+                if education is None:
+                    education = edu[0]
+                    session.add(edu[0])
+
+                edu[1].education = education
+                # Append association object only
+                emp.educations.append(edu[1])
+                session.add(edu[1])
+
+
+            for skill in skills:
+                ski = session.query(Skill). \
+                    filter(Skill.skill == skill.skill,
+                           Skill.category == skill.category).first()
+
+                if ski is None:
+                    ski = skill
+                    session.add(skill)
+
+                emp.skills.append(ski)
+
+            session.add(emp)
+            session.commit()
+        session.close()
+
+    def __extractTableTuples__(self, employee):
+        emp = self.__extractEmployeeTuple__(employee)
+        exp = self.__extractExperienceTuples__(employee)
+        edu = self.__extractEducationTuples__(employee)
+        skill = self.__extractSkillTuples__(employee)
+
+        return emp, exp, edu, skill
+
+    def __extractEmployeeTuple__(self, employee):
+        return Employee(user_url=employee.user_url_id, name=employee.name,
+                        location=employee.location, header=employee.header, about=employee.about)
+
+    def __extractExperienceTuples__(self, employee):
         exps = employee.experience
 
         tuples = []
         for exp in exps:
             # Appends a tuple of two tuples: First tuple for exp table, Second tuple for empexp table
-            tuples.append(((exp.position, exp.company_name),
-                           (self.__CastToDate__(exp.start_date), exp.location, exp.description, self.__CastToDate__(exp.end_date), exp.employment_type)))
+            experience = Experience(position=exp.position, company_name=exp.company_name)
+            employeeExperience = EmployeeExperience(start_date=self.__castToDate__(exp.start_date),
+                                                    end_date=self.__castToDate__(exp.end_date),
+                                                    location=exp.location,
+                                                    description=exp.description,
+                                                    employment_type=exp.employment_type
+                                                    )
+            tuples.append((experience, employeeExperience))
 
         return tuples
 
-
-    def __ExtractEducationTuples__(self, employee):
+    def __extractEducationTuples__(self, employee):
         edus = employee.education
 
         tuples = []
         for edu in edus:
             # Appends a tuple of two tuples: First tuple for edu table, Second tuple for empedu table
-            tuples.append(((edu.degree, edu.degree_type),
-                           (self.__CastToDate__(edu.start_date), self.__CastToDate__(edu.end_date), edu.institution, edu.GPA, edu.activities, edu.description)))
+            education = Education(institution=edu.institution, degree=edu.degree, degree_type=edu.degree_type)
+            employeeEducation = EmployeeEducation(start_date=self.__castToDate__(edu.start_date),
+                                                  end_date=self.__castToDate__(edu.end_date),
+                                                  GPA=edu.GPA,
+                                                  activities=edu.activities,
+                                                  description = edu.description
+                                                  )
+            tuples.append((education, employeeEducation))
 
         return tuples
 
-    def __ExtractSkillTuples__(self, employee):
+    def __extractSkillTuples__(self, employee):
         if employee.skills is None:
             return []
 
         tuples = []
         for category in employee.skills:
             for skill in employee.skills[category]:
-                tuples.append((skill, category))
+                skill = Skill(skill=skill, category=category)
+                tuples.append(skill)
 
         return tuples
 
-    '''
-    Deprecated, accomplishments are no longer stored as before
-    def __ExtractAccomplishmentTuples__(self, employee):
-        if employee.accomplishments is None:
-            return []
-
-        tuples = []
-        for category in employee.accomplishments:
-            for accomp in employee.accomplishments[category]:
-                tuples.append((accomp, category))
-
-        return tuples
-    '''
-
-    def __CastToDate__(self, dateStr: str) -> date:
+    def __castToDate__(self, dateStr: str) -> date:
         if dateStr.__contains__('Present') or len(dateStr) == 0:
             return None
 
@@ -133,164 +245,4 @@ class LinkedInDB:
         elif len(dateCheck) == 2:
             d = datetime.strptime(dateStr, '%b %Y')
 
-
         return d.date()
-
-
-    """
-    InsertToLinkedInDB::__InsertEmployeeTuple__
-
-    Description:
-        Inserts only the Employee components needed to initialize a tuple in the Employee table
-
-    Parameters:
-        empInsert -- Employee components needed for Employee tuple
-    """
-    def __InsertEmployeeTuple__(self, empInsert: (str)) -> int:
-        print("Inserting Employee Tuples")
-        query = "INSERT INTO employee(user_url,name,location,header,about) " \
-                "VALUES(%s,%s,%s,%s,%s)"
-        args = empInsert
-
-        try:
-            conn = self.__connect__()
-
-            cursor = conn.cursor()
-            cursor.execute(query, args)
-
-            print(cursor._executed, "params:", args)
-            conn.commit()
-
-            if cursor.lastrowid:
-                return cursor.lastrowid
-            else:
-                print('last insert id not found')
-                return None
-        except Error as error:
-            print(error)
-
-        finally:
-            cursor.close()
-            conn.close()
-
-    def __InsertExperienceTuples__(self, expInsert: [(), ()], emp_id: int):
-        print("Inserting Experience Tuples")
-        expQuery = "INSERT INTO EXPERIENCE(position, company_name) " \
-                   "VALUES(%s,%s)"
-        try:
-            conn = self.__connect__()
-            cursor = conn.cursor()
-            for exp in expInsert:
-                expArgs = exp[0]
-
-                cursor.execute(expQuery, expArgs)
-                print(cursor._executed, "params:", exp[0])
-
-                exp_id = cursor.lastrowid
-
-                empExpQuery = "INSERT INTO EMPLOYEEEXPERIENCE(emp_id,exp_id,start_date,location,description,end_date,employment_type) " \
-                              f"VALUES({emp_id},{exp_id},%s,%s,%s,%s,%s)"
-                empExpArgs = exp[1]
-
-                cursor.execute(empExpQuery, empExpArgs)
-                print(cursor._executed, "params:", exp[1])
-
-            conn.commit()
-        except Error as error:
-            print(error)
-
-        finally:
-            cursor.close()
-            conn.close()
-
-    def __InsertEducationTuples__(self, eduInsert: [(), ()], emp_id: int):
-        print("Inserting Education Tuples")
-        eduQuery = "INSERT INTO EDUCATION(degree,degree_type) " \
-                   "VALUES(%s,%s)"
-        try:
-            conn = self.__connect__()
-            cursor = conn.cursor()
-
-            for edu in eduInsert:
-                eduArgs = edu[0]
-
-                cursor.execute(eduQuery, eduArgs)
-                print(cursor._executed, "params:", eduArgs)
-
-                edu_id = cursor.lastrowid
-
-                empEduQuery = "INSERT INTO EMPLOYEEEDUCATION(emp_id,edu_id,start_date,end_date,institution,GPA,activities,description) " \
-                              f"VALUES({emp_id},{edu_id},%s,%s,%s,%s,%s,%s)"
-                empEduArgs = edu[1]
-
-                cursor.execute(empEduQuery, empEduArgs)
-            conn.commit()
-        except Error as error:
-            print(error)
-
-        finally:
-            cursor.close()
-            conn.close()
-
-    def __InsertSkillTuples__(self, skillInsert: [(str)], emp_id: int):
-        if len(skillInsert) == 0:
-            return
-        print("Inserting Skill Tuples")
-        skillQuery = "INSERT INTO SKILL(skill, category) " \
-                   "VALUES(%s,%s)"
-        try:
-            conn = self.__connect__()
-            cursor = conn.cursor()
-
-            for skill in skillInsert:
-                skillArgs = skill
-
-                cursor.execute(skillQuery, skillArgs)
-                print(cursor._executed, "params:", skillArgs)
-
-                skill_id = cursor.lastrowid
-
-                empSkillQuery = "INSERT INTO EMPLOYEESKILL(emp_id,skill_id) " \
-                              f"VALUES({emp_id},{skill_id})"
-
-                cursor.execute(empSkillQuery)
-            conn.commit()
-        except Error as error:
-            print(error)
-
-        finally:
-            cursor.close()
-            conn.close()
-
-    '''
-    Deprecated, accomplishments are no longer stored as before
-    def __InsertAccomplishmentTuples__(self, accompInsert: [(str)], emp_id: int):
-        if len(accompInsert) == 0:
-            return
-        print("Inserting Accomplishment Tuples")
-        accompQuery = "INSERT INTO ACCOMPLISHMENT(accomp, category) " \
-                   "VALUES(%s,%s)"
-        try:
-            conn = self.__connect__()
-            cursor = conn.cursor()
-
-            for accomp in accompInsert:
-                accompArgs = accomp
-
-                cursor.execute(accompQuery, accompArgs)
-                print(cursor._executed, "params:", accompArgs)
-
-                accomp_id = cursor.lastrowid
-
-                empAccompQuery = "INSERT INTO EMPLOYEEACCOMPLISHMENT(emp_id,skill_id) " \
-                              f"VALUES({emp_id},{accomp_id})"
-
-                cursor.execute(empAccompQuery)
-            conn.commit()
-        except Error as error:
-            print(error)
-
-        finally:
-            cursor.close()
-            conn.close()
-    '''

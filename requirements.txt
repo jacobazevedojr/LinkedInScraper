@@ -1,8 +1,10 @@
 certifi==2021.5.30
+greenlet==1.1.2
 idna==3.2
 mysql-connector-python==8.0.27
 protobuf==3.19.1
 requests==2.26.0
 schedule==1.1.0
 selenium==3.141.0
+SQLAlchemy==1.4.31
 urllib3==1.26.6

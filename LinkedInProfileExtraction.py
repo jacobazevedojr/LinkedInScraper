@@ -21,39 +21,17 @@ def scrapeProfiles():
             break
         else:
             # Insert emp into database
-            DATABASE.InsertEmployees(empList)
+            DATABASE.insertEmployees(empList)
 
-'''
 schedule.every().day.at("00:00").do(scrapeProfiles)
+schedule.every().day.at("02:00").do(scrapeProfiles)
+schedule.every().day.at("22:00").do(scrapeProfiles)
+
+print("Initial Test Run of Profile Scraper...")
+scrapeProfiles()
 
 while True:
     schedule.run_pending()
     time.sleep(60) # wait one minute
-'''
 
-driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH, DATABASE)
-
-
-emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/josh-braida-358a5476")
-print(emp)
-DATABASE.InsertEmployees([emp])
-
-emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/anushanandam")
-print(emp)
-DATABASE.InsertEmployees([emp])
-
-
-emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/helly-patel-b3a804129")
-print(emp)
-DATABASE.InsertEmployees([emp])
-
-
-emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/akshaysathiya")
-print(emp)
-DATABASE.InsertEmployees([emp])
-
-
-emp = driver.ExtractProfileAttributes("https://www.linkedin.com/in/girishrawat")
-print(emp)
-DATABASE.InsertEmployees([emp])
 

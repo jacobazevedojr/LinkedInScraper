@@ -53,7 +53,10 @@ DRIVER_PATH = "chromedriver.exe" # "/home/jazevedo/LinkedInScraper/chromedriver"
 # Either change driver code, or create a file called "creds.txt" in the working directory
 USERNAME, PASSWORD = GetUsernameAndPassword("creds.txt")
 DATABASE_USERNAME, DATABASE_PASSWORD = GetUsernameAndPassword("dbcreds.txt")
-DATABASE = LinkedInDB("linkedin", "10.33.113.250", 3308, DATABASE_USERNAME, DATABASE_PASSWORD)
+DATABASE_NAME = "linkedin"
+HOST = "10.33.113.250"
+PORT = 3308
+DATABASE = LinkedInDB(DATABASE_NAME, HOST, PORT, DATABASE_USERNAME, DATABASE_PASSWORD)
 
 """
 LinkedInScraper
@@ -73,7 +76,7 @@ class LinkedInScraper:
         if self.database is None:
             return None
         else:
-            self.__employeeURLsInDB__ = self.database.__LoadEmployeeURLs__()
+            self.__employeeURLsInDB__ = self.database.__loadEmployeeURLs__()
 
         # Stores the URL of each employee discovered in a LinkedIn query
         self.__employeeURLsToBeScraped__ = self.ExtractEmployeeURLsToBeScraped("employeeURLs.txt")
