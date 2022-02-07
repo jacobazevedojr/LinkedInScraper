@@ -494,19 +494,19 @@ class LinkedInScraper:
                                 "./div/div[2]/div/a/span/span[1]").text
                         except NoSuchElementException:
                             pass
-                        if "mos" not in dates and "yrs" not in dates:
+                        if "mos" not in dates and "yrs" not in dates and "yr" not in dates and "mo" not in dates:
                             try:
                                 dates = subExp.find_element(By.XPATH,
                                                             "./div/div[2]/div[1]/a/span[2]/span[1]").text
                             except NoSuchElementException:
                                 pass
-                        if "mos" not in dates and "yrs" not in dates:
+                        if "mos" not in dates and "yrs" not in dates and "yr" not in dates and "mo" not in dates:
                             try:
                                 dates = subExp.find_element(By.XPATH,
                                                             "./div/div[2]/div[1]/a/span[1]/span[1]").text
                             except NoSuchElementException:
                                 pass
-                        if "mos" not in dates and "yrs" not in dates:
+                        if "mos" not in dates and "yrs" not in dates and "yr" not in dates and "mo" not in dates:
                             print("ERROR: Could not find valid date")
                             print("Here is the experience element that caused the problem:")
                             print(experience.position + " at " + experience.company_name)
