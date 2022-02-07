@@ -491,13 +491,22 @@ class LinkedInScraper:
                         dates = subExp.find_element(By.XPATH,
                             "./div/div[2]/div/a/span/span[1]").text
                         # Nov 2021 - Present · 2 mos
-                        dashInd = dates.rindex("-")
-                        experience.start_date = dates[:dashInd].strip()
+                        skipEnd = False
                         try:
-                            dotInd = dates.rindex('·')
-                            experience.end_date = dates[dashInd + 2:dotInd].strip()
-                        except ValueError:
-                            experience.end_date = dates[dashInd + 2:].strip()
+                            dashInd = dates.rindex("-")
+                            experience.start_date = dates[:dashInd].strip()
+                        except:
+                            # Date didn't have a dash because it is only a single value
+                            experience.start_date = dates.split("·")[0].strip()
+                            experience.end_date = None
+                            skipEnd = True
+
+                        if not skipEnd:
+                            try:
+                                dotInd = dates.rindex('·')
+                                experience.end_date = dates[dashInd + 2:dotInd].strip()
+                            except ValueError:
+                                experience.end_date = dates[dashInd + 2:].strip()
                     except NoSuchElementException:
                         pass
 
