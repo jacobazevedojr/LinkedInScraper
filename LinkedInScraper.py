@@ -654,7 +654,8 @@ class LinkedInScraper:
                 edu.degree_type = degreeArr[-1]
             except:
                 print("Could not find degree information")
-                return None
+                edu.degree = ""
+                edu.degree_type = ""
 
             try:
                 edu.institution = educationElem.find_element(By.XPATH, "./div/div[2]/div[1]/a/div/span/span[1]").text
