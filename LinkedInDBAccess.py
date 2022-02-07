@@ -275,8 +275,16 @@ class LinkedInDB:
 
         dateCheck = dateStr.split()
         if len(dateCheck) == 1:
-            d = datetime.strptime(dateStr, '%Y')
+            # The formatting of the experiences in nested sublists sometimes makes it difficult to extract dates
+            # For now, we handle it by returning None, but there needs to be a work around somewhere within the scraper
+            try:
+                d = datetime.strptime(dateStr, '%Y')
+            except ValueError:
+                return None
         elif len(dateCheck) == 2:
-            d = datetime.strptime(dateStr, '%b %Y')
+            try:
+                d = datetime.strptime(dateStr, '%b %Y')
+            except ValueError:
+                return None
 
         return d.date()
