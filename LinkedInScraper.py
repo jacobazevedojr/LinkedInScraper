@@ -489,7 +489,16 @@ class LinkedInScraper:
                     # Dates
                     try:
                         dates = subExp.find_element(By.XPATH,
-                            "./div/div[2]/div/a/span/span[1] ./div/div[2]/div[1]/a/span[1]/span[1] ./div/div[2]/div[1]/a/span[1]/span[1]").text
+                            "./div/div[2]/div/a/span/span[1]").text
+                        if "mos" not in dates and "yrs" not in dates:
+                            dates = subExp.find_element(By.XPATH,
+                                                        "./div/div[2]/div/a/span/span[2]").text
+                        if "mos" not in dates and "yrs" not in dates:
+                            dates = subExp.find_element(By.XPATH,
+                                                        "./div/div[2]/div/a/span/span[3]").text
+                        if "mos" not in dates and "yrs" not in dates:
+                            print("ERROR: Could not find valid date")
+                            return None
                         # Nov 2021 - Present · 2 mos
                         skipEnd = False
                         try:
