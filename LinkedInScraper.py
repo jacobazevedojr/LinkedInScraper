@@ -508,6 +508,8 @@ class LinkedInScraper:
                                 pass
                         if "mos" not in dates and "yrs" not in dates:
                             print("ERROR: Could not find valid date")
+                            print("Here is the experience element that caused the problem:")
+                            print(experience.position + " at " + experience.company_name)
                             return None
                         # Nov 2021 - Present · 2 mos
                         skipEnd = False
