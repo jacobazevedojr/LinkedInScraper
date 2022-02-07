@@ -488,14 +488,24 @@ class LinkedInScraper:
 
                     # Dates
                     try:
-                        dates = subExp.find_element(By.XPATH,
-                            "./div/div[2]/div/a/span/span[1]").text
-                        if "mos" not in dates and "yrs" not in dates:
+                        dates = ""
+                        try:
                             dates = subExp.find_element(By.XPATH,
-                                                        "./div/div[2]/div/a/span/span[2]").text
+                                "./div/div[2]/div/a/span/span[1]").text
+                        except NoSuchElementException:
+                            pass
                         if "mos" not in dates and "yrs" not in dates:
-                            dates = subExp.find_element(By.XPATH,
-                                                        "./div/div[2]/div/a/span/span[3]").text
+                            try:
+                                dates = subExp.find_element(By.XPATH,
+                                                            "./div/div[2]/div[1]/a/span[2]/span[1]").text
+                            except NoSuchElementException:
+                                pass
+                        if "mos" not in dates and "yrs" not in dates:
+                            try:
+                                dates = subExp.find_element(By.XPATH,
+                                                            "./div/div[2]/div[1]/a/span[1]/span[1]").text
+                            except NoSuchElementException:
+                                pass
                         if "mos" not in dates and "yrs" not in dates:
                             print("ERROR: Could not find valid date")
                             return None
@@ -517,7 +527,8 @@ class LinkedInScraper:
                             except ValueError:
                                 experience.end_date = dates[dashInd + 2:].strip()
                     except NoSuchElementException:
-                        pass
+                        print("ERROR: Could not find date")
+                        return None
 
                     experience.description = None
                     experience.media = None
