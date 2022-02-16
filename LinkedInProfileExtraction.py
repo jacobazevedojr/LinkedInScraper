@@ -12,6 +12,10 @@ def scrapeProfiles():
     driver = LinkedInScraper(USERNAME, PASSWORD, DRIVER_PATH, DATABASE)
 
     for i, URL in enumerate(driver.__employeeURLsToBeScraped__):
+        if URL in driver.__employeeURLsInDB__:
+            print(URL, "Is already a profile in the database")
+            continue
+
         empList = [driver.ExtractProfileAttributes(URL)]
 
         if empList[0] is None:

@@ -113,13 +113,25 @@ class LinkedInDB:
 
     def __loadEmployeeURLs__(self):
         session = self.__connect__()
-        employeeURLs = []
+        employeeURLs = set()
 
         for instance in session.query(Employee).order_by(Employee.id):
-            employeeURLs.append(instance.user_url)
+            employeeURLs.add(instance.user_url)
 
         session.close()
         return employeeURLs
+
+    def __checkIfDuplicateProfile__(self, url):
+        session = self.__connect__()
+
+        emp = session.query(Employee).filter(Employee.user_url==url).first()
+
+        session.close()
+
+        if emp is None:
+            return False
+
+        return True
 
     def insertEmployees(self, employeeList):
         session = self.__connect__()
@@ -248,7 +260,7 @@ class LinkedInDB:
                                                   end_date=self.__castToDate__(edu.end_date),
                                                   GPA=edu.GPA,
                                                   activities=edu.activities,
-                                                  description = edu.description
+                                                  description=edu.description
                                                   )
             tuples.append((education, employeeEducation))
 
@@ -258,11 +270,14 @@ class LinkedInDB:
         if employee.skills is None:
             return []
 
+        skills = set()
         tuples = []
         for category in employee.skills:
             for skill in employee.skills[category]:
-                skill = Skill(skill=skill, category=category)
-                tuples.append(skill)
+                if skill.lower() not in skills:
+                    skill = Skill(skill=skill, category=category)
+                    tuples.append(skill)
+                    skills.add(skill.lower())
 
         return tuples
 
