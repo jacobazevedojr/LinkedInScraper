@@ -576,7 +576,12 @@ class LinkedInScraper:
                     # Flag if this date does not contain a -
                     noEnd = False
                     dates = exp.find_element(By.XPATH, "./div/div[2]/div/div[1]/span[2]/span[1]").text
+                    test = exp.find_element(By.XPATH, "/div/div/p/span").text
+                    test1 = exp.find_element(By.CLASS_NAME, "date-range").text
+
                     print(dates)
+                    print("test", test)
+                    print("test1", test1)
                     # Nov 2021 - Present · 2 mos
                     try:
                         dashInd = dates.rindex("-")
