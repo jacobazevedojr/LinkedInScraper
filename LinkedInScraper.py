@@ -577,12 +577,15 @@ class LinkedInScraper:
                     noEnd = False
                     dates = exp.find_element(By.XPATH, "./div/div[2]/div/div[1]/span[2]/span[1]").text
                     try:
-                        test1 = exp.find_element(By.CLASS_NAME, "date-range").text
-                        print("test1", test1)
                         test = exp.find_element(By.XPATH, "./div/div/p/span").text
                         print("test", test)
                     except NoSuchElementException:
-                        pass
+                        print("test didn't work")
+                    try:
+                        test1 = exp.find_element(By.CLASS_NAME, "date-range").text
+                        print("test1", test1)
+                    except NoSuchElementException:
+                        print("test1 didn't work")
 
                     print(dates)
 
