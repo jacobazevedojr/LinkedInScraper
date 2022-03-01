@@ -576,13 +576,13 @@ class LinkedInScraper:
                     # Flag if this date does not contain a -
                     noEnd = False
                     dates = exp.find_element(By.XPATH, "./div/div[2]/div/div[1]/span[2]/span[1]").text
-                    try:
-                        test0 = exp.find_element(By.XPATH, "./div/div[2]/div/div[1]").text
-                        print("test0", test0)
-                    except NoSuchElementException:
-                        print("test0 didn't work")
 
-                    print(dates)
+                    try:
+                        #In case the end of the date is included by accident
+                        dotInd = dates.rindex("·")
+                        dates = dates[:dotInd].strip()
+                    except ValueError:
+                        pass
 
                     # Nov 2021 - Present · 2 mos
                     try:

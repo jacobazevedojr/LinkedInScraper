@@ -289,7 +289,6 @@ class LinkedInDB:
             return None
 
         dateCheck = dateStr.split()
-        print(dateCheck)
 
         if len(dateCheck) == 1:
             # The formatting of the experiences in nested sublists sometimes makes it difficult to extract dates
