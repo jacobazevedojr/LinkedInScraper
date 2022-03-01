@@ -275,8 +275,8 @@ class LinkedInDB:
         for category in employee.skills:
             for skill in employee.skills[category]:
                 if skill.lower() not in skills:
-                    skill = Skill(skill=skill, category=category)
-                    tuples.append(skill)
+                    skl = Skill(skill=skill, category=category)
+                    tuples.append(skl)
                     skills.add(skill.lower())
 
         return tuples
