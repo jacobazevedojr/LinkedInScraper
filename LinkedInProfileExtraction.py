@@ -16,16 +16,25 @@ def scrapeProfiles():
             print(URL, "Is already a profile in the database")
             continue
 
-        empList = [driver.ExtractProfileAttributes(URL)]
+        try:
+            empList = [driver.ExtractProfileAttributes(URL)]
 
-        if empList[0] is None:
-            # Write remaining employees to file
-            WriteLinesToFile("employeeURLs.txt", driver.__employeeURLsToBeScraped__[i:])
-            print("ERROR:", URL, "did not extract properly. There is either a bug or scraping was blocked.")
-            break
-        else:
-            # Insert emp into database
-            DATABASE.insertEmployees(empList)
+            if empList[0] is None:
+                # Write remaining employees to file
+                WriteLinesToFile("employeeURLs.txt", driver.__employeeURLsToBeScraped__[i:])
+                print("ERROR:", URL, "did not extract properly. There is either a bug or scraping was blocked.")
+                break
+            else:
+                # Insert emp into database
+                DATABASE.insertEmployees(empList)
+        except:
+            print(URL, "cannot be extracted, deleting")
+            WriteLinesToFile("employeeURLs.txt", driver.__employeeURLsToBeScraped__[i+1:])
+            with open("URLsWithErrors.txt", "a+") as file:
+                file.write(URL + "\n")
+            continue
+
+
 
 schedule.every().day.at("00:00").do(scrapeProfiles)
 schedule.every().day.at("02:00").do(scrapeProfiles)
