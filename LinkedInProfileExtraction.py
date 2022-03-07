@@ -23,6 +23,7 @@ def scrapeProfiles():
                 # Write remaining employees to file
                 WriteLinesToFile("employeeURLs.txt", driver.__employeeURLsToBeScraped__[i:])
                 print("ERROR:", URL, "did not extract properly. There is either a bug or scraping was blocked.")
+                print(i, "profiles, successfully extracted")
                 break
             else:
                 # Insert emp into database
