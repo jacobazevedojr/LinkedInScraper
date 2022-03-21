@@ -176,13 +176,6 @@ class LinkedInScraper:
         Adds all unique employee URLs to the employeeURLs set
     """
     def AddEmployeeURLsFromSearchPage(self):
-        try:
-            if self.driver.find_element(By.XPATH, "/html/body/div[5]/div[3]/div/div[2]/div/div[1]/main/div/div/div[1]/section/h2").text == "No results found":
-                return True
-        except NoSuchElementException:
-            pass
-
-
         main = None
         tries = 0
 
@@ -210,11 +203,18 @@ class LinkedInScraper:
         if main is None:
             return False
 
+        try:
+            if main.find_element(By.XPATH, "./div/div/div[1]/section/h2").text == "No results found":
+                return True
+        except NoSuchElementException:
+            pass
+
         if tries > 1 or refresh is True:
             print("Parsing page:", end="")
 
         peopleDiv = main.find_element(By.TAG_NAME, "ul")
         peopleList = peopleDiv.find_elements(By.XPATH, "./li")
+        if len(peopleList)
         previousLink = ""
 
         for i, element in enumerate(peopleList):
