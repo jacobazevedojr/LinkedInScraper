@@ -176,6 +176,13 @@ class LinkedInScraper:
         Adds all unique employee URLs to the employeeURLs set
     """
     def AddEmployeeURLsFromSearchPage(self):
+        try:
+            if self.driver.find_element(By.XPATH, "/html/body/div[5]/div[3]/div/div[2]/div/div[1]/main/div/div/div[1]/section/h2").text == "No results found":
+                return True
+        except NoSuchElementException:
+            pass
+
+
         main = None
         tries = 0
 
