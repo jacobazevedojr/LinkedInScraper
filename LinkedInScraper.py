@@ -283,15 +283,15 @@ class LinkedInScraper:
             return False
 
         try:
-            div1 = main.find_element(By.TAG_NAME, "div")
-            div2 = div1.find_element(By.TAG_NAME, "div")
-            div3 = div2.find_elements(By.TAG_NAME, "div")
-            div4 = div3[4].find_element(By.TAG_NAME, "div")
-            div5 = div4.find_element(By.TAG_NAME, "div")
-            ul = div5.find_element(By.TAG_NAME, "ul")
-            list = ul.find_elements(By.TAG_NAME, "li")
-            span = list[-1].find_elements(By.TAG_NAME, "span")
-            pageButtonCount = span
+            if main.find_element(By.XPATH, "./div/div/div/section/h2").text == "No results found":
+                # Remove query from file
+                return True
+        except NoSuchElementException:
+            pass
+
+        try:
+            pageButtonCount = main.find_element(By.XPATH,
+                    "./div/div/div[4]/div/div/ul/li[last()]/button/span")
         except NoSuchElementException:
             print("Element not found, trying new location")
 
@@ -316,7 +316,6 @@ class LinkedInScraper:
                     "/html/body/div[5]/div[3]/div/div[2]/div/div[1]/main/div/div/div[5]/div/div/ul/li[10]/button/span")
             except NoSuchElementException:
                 print("Element not found, defaulting to 0")
-                return False
 
         if pageButtonCount is not None:
             maxPageCount = int(pageButtonCount.text)
